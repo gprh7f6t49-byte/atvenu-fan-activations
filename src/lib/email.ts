@@ -5,6 +5,7 @@ import { db, newId } from "./db";
 import type { Activation, Show } from "./activations";
 import { markPassEvent, type PassRecord } from "./fans";
 import { formatShowDate, redemptionInstructions } from "./wallet/content";
+import { passBadge } from "./discount";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -12,6 +13,15 @@ const esc = (s: string) =>
 function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
   const passUrl = `${config.baseUrl}/p/${pass.pass_token}`;
   const name = pass.first_name ? `Hi ${esc(pass.first_name)},` : "Hi,";
+  const badge = passBadge(a.kind, pass.recipient_group);
+  const intro =
+    a.kind === "fan"
+      ? "You're in. Here's your personal code — add it to your phone's wallet so it's ready at the merch stand."
+      : `Here's your ${a.kind === "crew" ? "crew" : "comp"} pass for the ${esc(a.tour_name)}. Add it to your phone's wallet and show it at any merch stand.`;
+  const footer =
+    a.kind === "fan"
+      ? `You're receiving this because you signed up for the ${esc(a.artist_name)} fan offer.`
+      : `This pass was issued to you by the ${esc(a.artist_name)} merch team. It's personal to you — please don't forward it.`;
   const dates = shows
     .map((s) => `<tr><td style="padding:4px 12px 4px 0;color:#888">${esc(formatShowDate(s.show_date))}</td><td style="padding:4px 0">${esc(s.venue)}, ${esc(s.city)}</td></tr>`)
     .join("");
@@ -19,13 +29,13 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0"><tr><td align="center">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:12px;overflow:hidden">
     <tr><td style="background:${a.primary_color};color:${a.text_color};padding:32px 32px 28px">
-      <div style="font-size:13px;letter-spacing:2px;color:${a.accent_color};text-transform:uppercase">${esc(a.tour_name)}</div>
+      <div style="font-size:13px;letter-spacing:2px;color:${a.accent_color};text-transform:uppercase">${badge ? `${esc(badge)} · ` : ""}${esc(a.tour_name)}</div>
       <div style="font-size:34px;font-weight:900;margin-top:6px">${esc(a.artist_name)}</div>
       <div style="font-size:20px;margin-top:10px">${esc(a.offer_headline)}</div>
     </td></tr>
     <tr><td style="padding:28px 32px">
       <p style="margin:0 0 16px">${name}</p>
-      <p style="margin:0 0 20px">You're in. Here's your personal code — add it to your phone's wallet so it's ready at the merch stand.</p>
+      <p style="margin:0 0 20px">${intro}</p>
       <div style="text-align:center;margin:24px 0">
         <img src="cid:qr" width="200" height="200" alt="QR code for ${esc(pass.code)}" style="display:inline-block"/>
         <div style="font-family:Menlo,Consolas,monospace;font-size:22px;letter-spacing:3px;margin-top:8px">${esc(pass.code)}</div>
@@ -39,11 +49,17 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
       ${a.offer_terms ? `<p style="font-size:12px;color:#888;margin:0">${esc(a.offer_terms)}</p>` : ""}
     </td></tr>
     <tr><td style="padding:16px 32px 28px;font-size:12px;color:#999">
-      You're receiving this because you signed up for the ${esc(a.artist_name)} fan offer.
+      ${footer}
       ${a.privacy_url ? `<a href="${a.privacy_url}" style="color:#999">Privacy policy</a>.` : ""}
     </td></tr>
   </table></td></tr></table></body></html>`;
-  return { subject: `Your ${a.artist_name} merch code is ready`, html };
+  const subject =
+    a.kind === "crew"
+      ? `Your ${a.artist_name} crew merch pass`
+      : a.kind === "comp"
+        ? `Your ${a.artist_name} merch comp pass`
+        : `Your ${a.artist_name} merch code is ready`;
+  return { subject, html };
 }
 
 /**

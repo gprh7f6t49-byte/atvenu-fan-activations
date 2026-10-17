@@ -1,6 +1,8 @@
 import { db, newId, nowIso, tx } from "./db";
 
 export type ActivationStatus = "draft" | "live" | "ended";
+export type ActivationKind = "fan" | "crew" | "comp";
+export type DiscountType = "percent" | "amount";
 
 export interface Activation {
   id: string;
@@ -19,6 +21,11 @@ export interface Activation {
   privacy_url: string | null;
   status: ActivationStatus;
   pass_expires_at: string | null;
+  kind: ActivationKind;
+  discount_type: DiscountType;
+  discount_value: number | null;
+  discount_currency: string | null;
+  single_use: number;
   created_at: string;
   updated_at: string;
 }
@@ -43,11 +50,16 @@ export interface ActivationStats {
   redeemed_fans: number;
   redemptions: number;
   unmatched_redemptions: number;
+  revoked: number;
+  /** Estimated value of discounts given to matched recipients, per currency. */
+  discount_given: { currency: string | null; total: number }[];
   /** Attributed sales, one entry per currency (EU tours mix GBP and EUR). */
   revenue: { currency: string | null; total: number }[];
 }
 
 export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at">;
+
+const KIND_SLUG_PREFIX: Record<ActivationKind, string> = { fan: "", crew: "crew-", comp: "comps-" };
 
 const EDITABLE_FIELDS = [
   "slug",
@@ -65,6 +77,10 @@ const EDITABLE_FIELDS = [
   "privacy_url",
   "status",
   "pass_expires_at",
+  "discount_type",
+  "discount_value",
+  "discount_currency",
+  "single_use",
 ] as const satisfies readonly (keyof ActivationInput)[];
 
 export function listActivations(): (Activation & ActivationStats)[] {
@@ -82,11 +98,24 @@ export function getActivationBySlug(slug: string): Activation | undefined {
 
 export function createActivation(input: ActivationInput): string {
   const id = newId();
-  const cols = ["id", ...EDITABLE_FIELDS];
+  const cols = ["id", "kind", ...EDITABLE_FIELDS];
   db()
     .prepare(`INSERT INTO activations (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-    .run(id, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
+    .run(id, input.kind, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
   return id;
+}
+
+/** Crew and comp activations have no public page, so their slug is generated rather than chosen. */
+export function generateSlug(kind: ActivationKind, artist: string, tour: string): string {
+  const base = `${KIND_SLUG_PREFIX[kind]}${artist}-${tour}`
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  let slug = base || "activation";
+  for (let n = 2; getActivationBySlug(slug); n++) slug = `${base}-${n}`;
+  return slug;
 }
 
 export function updateActivation(id: string, input: ActivationInput): void {
@@ -129,10 +158,11 @@ export function getActivationStats(activationId: string): ActivationStats {
     .prepare(
       `SELECT COUNT(*) AS n,
               COALESCE(SUM(apple_pass_at IS NOT NULL), 0) AS apple,
-              COALESCE(SUM(google_pass_at IS NOT NULL), 0) AS google
+              COALESCE(SUM(google_pass_at IS NOT NULL), 0) AS google,
+              COALESCE(SUM(revoked_at IS NOT NULL), 0) AS revoked
        FROM opt_ins WHERE activation_id = ?`,
     )
-    .get(activationId) as { n: number; apple: number; google: number };
+    .get(activationId) as { n: number; apple: number; google: number; revoked: number };
   const red = conn
     .prepare(
       `SELECT COUNT(*) AS n,
@@ -151,12 +181,31 @@ export function getActivationStats(activationId: string): ActivationStats {
        GROUP BY r.currency ORDER BY total DESC`,
     )
     .all(activationId) as unknown as { currency: string | null; total: number }[];
+  // Uses the export's discount column when present; otherwise estimates from the
+  // activation's discount (a 100% comp can't be estimated from a £0 order total).
+  const discount = conn
+    .prepare(
+      `SELECT CASE WHEN r.discount_amount IS NULL AND a.discount_type = 'amount'
+                   THEN COALESCE(a.discount_currency, r.currency) ELSE r.currency END AS currency,
+              SUM(COALESCE(r.discount_amount,
+                CASE WHEN a.discount_type = 'amount' THEN a.discount_value
+                     WHEN a.discount_type = 'percent' AND a.discount_value < 100
+                       THEN r.order_total * a.discount_value / (100 - a.discount_value) END)) AS total
+       FROM redemptions r
+       JOIN opt_ins o ON o.promo_code_id = r.promo_code_id
+       JOIN activations a ON a.id = r.activation_id
+       WHERE r.activation_id = ?
+       GROUP BY 1 HAVING total IS NOT NULL ORDER BY total DESC`,
+    )
+    .all(activationId) as unknown as { currency: string | null; total: number }[];
   return {
     codes_total: codes.total,
     codes_available: codes.available,
     opt_ins: optIns.n,
     apple_passes: optIns.apple,
     google_passes: optIns.google,
+    revoked: optIns.revoked,
+    discount_given: discount,
     redemptions: red.n,
     unmatched_redemptions: red.unmatched,
     redeemed_fans: red.fans,
@@ -203,4 +252,39 @@ export function getRedemptionsByVenue(activationId: string): ShowBreakdown[] {
        GROUP BY COALESCE(r.venue, 'Unknown venue') ORDER BY redemptions DESC`,
     )
     .all(activationId) as unknown as ShowBreakdown[];
+}
+
+export interface GroupBreakdown {
+  label: string;
+  issued: number;
+  used: number;
+  orders: number;
+  revenue: { currency: string | null; total: number }[];
+}
+
+/** Crew by department, comps by group + organisation (e.g. "Venue · Wembley Stadium"). */
+export function getRecipientBreakdown(activationId: string): GroupBreakdown[] {
+  const conn = db();
+  const label = `COALESCE(NULLIF(TRIM(COALESCE(o.recipient_group, '') ||
+      CASE WHEN o.organisation IS NOT NULL AND o.organisation <> '' THEN ' · ' || o.organisation ELSE '' END), ''),
+    o.role, 'Unassigned')`;
+  const groups = conn
+    .prepare(
+      `SELECT ${label} AS label, COUNT(DISTINCT o.id) AS issued,
+              COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN o.id END) AS used, COUNT(r.id) AS orders
+       FROM opt_ins o LEFT JOIN redemptions r ON r.promo_code_id = o.promo_code_id
+       WHERE o.activation_id = ? GROUP BY 1 ORDER BY issued DESC, label`,
+    )
+    .all(activationId) as unknown as Omit<GroupBreakdown, "revenue">[];
+  const money = conn
+    .prepare(
+      `SELECT ${label} AS label, r.currency, SUM(r.order_total) AS total
+       FROM opt_ins o JOIN redemptions r ON r.promo_code_id = o.promo_code_id
+       WHERE o.activation_id = ? AND r.order_total IS NOT NULL GROUP BY 1, 2 ORDER BY total DESC`,
+    )
+    .all(activationId) as unknown as { label: string; currency: string | null; total: number }[];
+  return groups.map((g) => ({
+    ...g,
+    revenue: money.filter((m) => m.label === g.label).map(({ currency, total }) => ({ currency, total })),
+  }));
 }

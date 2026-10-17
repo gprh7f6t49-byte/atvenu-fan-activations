@@ -20,6 +20,11 @@ export interface OptInInput {
   source?: string;
   ip?: string;
   userAgent?: string;
+  /** Crew department / comp recipient details (admin-issued passes). */
+  role?: string;
+  recipientGroup?: string;
+  organisation?: string;
+  issuedByAdmin?: boolean;
 }
 
 export interface OptInResult {
@@ -30,8 +35,9 @@ export interface OptInResult {
 }
 
 /**
- * Registers a fan for an activation and hands them the next unused promo code.
- * A fan who signs up twice gets their original code back rather than burning another.
+ * Registers a person (fan opt-in, or an admin-issued crew/comp pass) for an activation
+ * and hands them the next unused promo code. Registering the same email twice returns
+ * the original code rather than burning another.
  */
 export function optInFan(activation: Activation, input: OptInInput): OptInResult {
   return tx((conn) => {
@@ -75,8 +81,9 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
     conn
       .prepare(
         `INSERT INTO opt_ins (id, activation_id, fan_id, promo_code_id, pass_token, consent_artist, consent_promoter,
-           consent_atvenu, consent_snapshot, source, ip, user_agent, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           consent_atvenu, consent_snapshot, source, ip, user_agent, created_at,
+           role, recipient_group, organisation, issued_by_admin)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         optInId,
@@ -92,6 +99,10 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
         input.ip ?? null,
         input.userAgent ?? null,
         now,
+        input.role || null,
+        input.recipientGroup || null,
+        input.organisation || null,
+        input.issuedByAdmin ? 1 : 0,
       );
     return { optInId, passToken, code: code.code, existing: false };
   });
@@ -106,6 +117,11 @@ export interface PassRecord {
   email: string;
   first_name: string | null;
   last_name: string | null;
+  role: string | null;
+  recipient_group: string | null;
+  organisation: string | null;
+  revoked_at: string | null;
+  email_sent_at: string | null;
   created_at: string;
 }
 
@@ -113,7 +129,8 @@ export function getPassByToken(token: string): PassRecord | undefined {
   return db()
     .prepare(
       `SELECT o.id AS opt_in_id, o.pass_token, o.activation_id, c.code, c.status AS code_status,
-              f.email, f.first_name, f.last_name, o.created_at
+              f.email, f.first_name, f.last_name, o.role, o.recipient_group, o.organisation,
+              o.revoked_at, o.email_sent_at, o.created_at
        FROM opt_ins o JOIN promo_codes c ON c.id = o.promo_code_id JOIN fans f ON f.id = o.fan_id
        WHERE o.pass_token = ?`,
     )
@@ -157,7 +174,7 @@ export function importRedemptions(activationId: string, rows: RedemptionRow[], f
     );
     const insert = conn.prepare(
       `INSERT OR IGNORE INTO redemptions (id, activation_id, code, promo_code_id, order_ref, order_total, currency,
-         item_count, redeemed_at, venue, city, import_batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+         item_count, discount_amount, redeemed_at, venue, city, import_batch_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     );
     const markRedeemed = conn.prepare(
       "UPDATE promo_codes SET status = 'redeemed', redeemed_at = COALESCE(redeemed_at, ?) WHERE id = ?",
@@ -168,7 +185,7 @@ export function importRedemptions(activationId: string, rows: RedemptionRow[], f
       const code = findCode.get(activationId, r.code) as { id: string } | undefined;
       const changes = Number(
         insert.run(newId(), activationId, r.code, code?.id ?? null, r.orderRef, r.total, r.currency, r.items,
-          r.redeemedAt, r.venue, r.city, batchId).changes,
+          r.discount, r.redeemedAt, r.venue, r.city, batchId).changes,
       );
       if (!changes) continue;
       imported++;
@@ -210,6 +227,11 @@ export function listImports(activationId: string): ImportBatch[] {
 
 export interface FanRow {
   opt_in_id: string;
+  pass_token: string;
+  role: string | null;
+  recipient_group: string | null;
+  organisation: string | null;
+  revoked_at: string | null;
   email: string;
   first_name: string | null;
   last_name: string | null;
@@ -225,29 +247,34 @@ export interface FanRow {
   email_sent_at: string | null;
   opted_in_at: string;
   orders: number;
-  spend: number;
-  currency: string | null;
+  /** Spend per currency — a crew member may buy at UK and EU shows. */
+  spend: { currency: string | null; total: number }[];
   last_purchase_at: string | null;
 }
 
 export function listFans(activationId: string, search?: string): FanRow[] {
   const like = search ? `%${search.trim()}%` : null;
-  return db()
+  const rows = db()
     .prepare(
-      `SELECT o.id AS opt_in_id, f.email, f.first_name, f.last_name, f.country, c.code, c.status AS code_status,
+      `SELECT o.id AS opt_in_id, o.pass_token, o.role, o.recipient_group, o.organisation, o.revoked_at, f.email, f.first_name, f.last_name, f.country, c.code, c.status AS code_status,
               o.consent_artist, o.consent_promoter, o.consent_atvenu, o.source,
               o.apple_pass_at, o.google_pass_at, o.email_sent_at, o.created_at AS opted_in_at,
-              COUNT(r.id) AS orders, COALESCE(SUM(r.order_total), 0) AS spend, MAX(r.currency) AS currency, MAX(r.redeemed_at) AS last_purchase_at
+              COUNT(r.id) AS orders, MAX(r.redeemed_at) AS last_purchase_at,
+              (SELECT json_group_array(json_object('currency', currency, 'total', total))
+                 FROM (SELECT currency, SUM(order_total) AS total FROM redemptions
+                       WHERE promo_code_id = c.id AND order_total IS NOT NULL GROUP BY currency)) AS spend_json
        FROM opt_ins o
        JOIN fans f ON f.id = o.fan_id
        JOIN promo_codes c ON c.id = o.promo_code_id
        LEFT JOIN redemptions r ON r.promo_code_id = c.id
        WHERE o.activation_id = ?
-         AND (? IS NULL OR f.email LIKE ? OR c.code LIKE ? OR f.first_name LIKE ? OR f.last_name LIKE ?)
+         AND (? IS NULL OR f.email LIKE ? OR c.code LIKE ? OR f.first_name LIKE ? OR f.last_name LIKE ?
+              OR o.role LIKE ? OR o.organisation LIKE ?)
        GROUP BY o.id
        ORDER BY o.created_at DESC`,
     )
-    .all(activationId, like, like, like, like, like) as unknown as FanRow[];
+    .all(activationId, like, like, like, like, like, like, like) as unknown as (Omit<FanRow, "spend"> & { spend_json: string })[];
+  return rows.map(({ spend_json, ...row }) => ({ ...row, spend: JSON.parse(spend_json) }));
 }
 
 /** Everything held about one fan — used for GDPR subject access requests. */
@@ -259,7 +286,8 @@ export function exportFanData(email: string) {
   if (!fan) return null;
   const optIns = conn
     .prepare(
-      `SELECT a.artist_name, a.tour_name, o.created_at AS opted_in_at, c.code, o.consent_artist, o.consent_promoter,
+      `SELECT a.artist_name, a.tour_name, a.kind, o.created_at AS opted_in_at, c.code, o.role, o.recipient_group,
+              o.organisation, o.revoked_at, o.consent_artist, o.consent_promoter,
               o.consent_atvenu, o.consent_snapshot, o.source, o.ip, o.user_agent, o.apple_pass_at, o.google_pass_at,
               o.email_sent_at
        FROM opt_ins o JOIN activations a ON a.id = o.activation_id JOIN promo_codes c ON c.id = o.promo_code_id
@@ -289,4 +317,12 @@ export function deleteFan(email: string): boolean {
     conn.prepare("DELETE FROM fans WHERE id = ?").run(fan.id);
     return true;
   });
+}
+
+/**
+ * Marks an admin-issued pass as revoked (or reinstates it). The pass page and wallet
+ * downloads stop working; the code itself must also be disabled in atVenu.
+ */
+export function setRevoked(optInId: string, revoked: boolean): void {
+  db().prepare("UPDATE opt_ins SET revoked_at = ? WHERE id = ?").run(revoked ? nowIso() : null, optInId);
 }

@@ -1,14 +1,25 @@
 # atVenu Fan Activations (pilot)
 
-Fans opt in on a branded landing page for an artist activation, get a unique atVenu promo code as an
-Apple / Google Wallet pass, and redeem it at the merch stand. Uploading atVenu's redemption report then ties
-every sale back to the fan who claimed the code.
+Unique atVenu promo codes delivered as Apple / Google Wallet QR passes, redeemed at the merch stand, with
+atVenu's redemption report tying every sale back to the person who held the code.
 
-Example activation: **Oasis — Live '27 European Tour** (sample data).
+Three activation types:
+
+| Type | Who gets passes | How | Typical discount |
+|---|---|---|---|
+| **Fan activation** | The public | Fans opt in on a branded landing page (with GDPR consents) | 15% off, one use |
+| **Crew sales** | Touring crew | Merch team issues named passes (one at a time or CSV crew list) | 25% off, reusable all tour |
+| **Venue & management comps** | Venue staff, management, label, promoter reps | Merch team issues named passes, tagged by group and organisation | £40 off or 100% off, one use |
+
+Each activation has its own pool of atVenu codes and a **discount** set as a percentage or a fixed amount
+(GBP / EUR / USD), with codes set to one order each or reusable. Set the same discount on the codes in atVenu.
+atVenu applies it at the till; this app shows it on the pass and estimates discount value in reports.
+
+Example: **Oasis — Live '27 European Tour** (sample data), with all three types.
 
 ## How it works
 
-1. **Create an activation** in the admin: artist, tour, offer, brand colours, consent wording, tour dates.
+1. **Create an activation** in the admin: pick the type, then artist, tour, discount, brand colours, tour dates.
 2. **Import promo codes**: generate unique single-use codes in atVenu, export them as CSV, upload.
 3. **Share the landing page** (`/a/<slug>`). Add `?utm_source=instagram` etc. to track where fans came from.
 4. **The fan opts in** and gets the next unused code. Signing up again with the same email returns the same code.
@@ -19,6 +30,12 @@ Example activation: **Oasis — Live '27 European Tour** (sample data).
    giving conversion, attributed sales (per currency) and results by venue. Re-uploading the same file is safe.
 7. **Export fans** (CSV, with consent flags) to share with the artist or promoter, only where consent was given.
 
+**Crew and comps** skip the landing page (there is no public sign-up). Under the **Crew / Recipients** tab, issue
+passes one by one or upload a CSV list (`name`, `email`, plus `department` for crew or `group`, `organisation`, `role`
+for comps). Passes can be emailed, opened, re-sent or **revoked**. Revoking kills the pass page and wallet downloads;
+also disable the code in atVenu. Results show usage by department or group and the estimated discount given.
+If the atVenu export includes a discount column, that figure is used instead of the estimate.
+
 GDPR access and erasure requests are under **Admin → Data requests**.
 
 ## Run it locally
@@ -28,7 +45,7 @@ Requires Node 22.13+ (uses the built-in SQLite).
 ```bash
 npm install
 cp .env.example .env.local      # set ADMIN_PASSWORD at minimum
-npm run seed -- --demo          # Oasis example + 500 codes + sample fans and sales
+npm run seed -- --demo          # Oasis fan, crew and comps examples with sample passes and sales
 npm run dev                     # http://localhost:3000
 ```
 
@@ -58,7 +75,9 @@ Columns are matched by name, so exports don't need reformatting:
 - **Sales**: code (required) plus any of order ID, total, currency, items, date, venue, city.
   UK/EU `DD/MM/YYYY` dates are handled.
 
-Samples: `public/samples/promo-codes.csv`, `public/samples/redemptions.csv`.
+- **Crew / comp lists**: `name` (or first/last name) and `email`, plus optional department, group, organisation, role.
+
+Samples are in `public/samples/`: promo codes, redemptions, crew list and comp list.
 
 ## Project layout
 

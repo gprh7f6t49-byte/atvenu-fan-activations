@@ -7,12 +7,13 @@ import { createHash } from "node:crypto";
 const norm = (h: string) => h.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const ALIASES = {
-  code: ["code", "promocode", "promo", "promotioncode", "discountcode", "discount", "couponcode", "coupon", "voucher", "vouchercode"],
+  code: ["code", "promocode", "promo", "promotioncode", "discountcode", "couponcode", "coupon", "voucher", "vouchercode"],
   orderRef: ["orderid", "ordernumber", "orderno", "order", "orderref", "transactionid", "transaction", "receipt", "receiptnumber", "saleid", "ticketid"],
   total: ["total", "ordertotal", "amount", "grosssales", "gross", "saletotal", "net", "netsales", "subtotal"],
   currency: ["currency", "currencycode"],
   items: ["items", "itemcount", "quantity", "qty", "units", "unitssold"],
   date: ["date", "redeemedat", "orderdate", "datetime", "timestamp", "saledate", "createdat", "showdate"],
+  discount: ["discountamount", "discounttotal", "discountvalue", "totaldiscount", "discount", "discounts"],
   venue: ["venue", "venuename", "location", "show"],
   city: ["city", "town"],
 } as const;
@@ -25,7 +26,10 @@ function buildColumnMap(headers: string[]): Partial<Record<Field, string>> {
     const aliases = ALIASES[field] as readonly string[];
     // exact alias match first, then "contains" (e.g. "Promo Code Used")
     const exact = headers.find((h) => aliases.includes(norm(h)));
-    const fuzzy = exact ?? headers.find((h) => aliases.some((a) => a.length > 3 && norm(h).includes(a)));
+    // "discount" columns must not be mistaken for the code column and vice versa.
+    const fuzzy =
+      exact ??
+      headers.find((h) => aliases.some((a) => a.length > 3 && norm(h).includes(a)) && !(field === "discount" && norm(h).includes("code")));
     if (fuzzy) map[field] = fuzzy;
   }
   return map;
@@ -58,6 +62,7 @@ export interface RedemptionRow {
   total: number | null;
   currency: string | null;
   items: number | null;
+  discount: number | null;
   redeemedAt: string | null;
   venue: string | null;
   city: string | null;
@@ -101,6 +106,8 @@ export function parseRedemptionsCsv(text: string): { rows: RedemptionRow[]; colu
       total: toNumber(get("total")),
       currency: get("currency") || null,
       items: toNumber(get("items")),
+      // A "15%" column describes the promo, not the money off this order.
+      discount: get("discount")?.includes("%") ? null : toNumber(get("discount")),
       redeemedAt: toIsoDate(get("date")),
       venue: get("venue") || null,
       city: get("city") || null,
@@ -111,4 +118,45 @@ export function parseRedemptionsCsv(text: string): { rows: RedemptionRow[]; colu
 
 export function toCsv(rows: Record<string, unknown>[]): string {
   return Papa.unparse(rows);
+}
+
+export interface RecipientRow {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  group: string;
+  organisation: string;
+}
+
+const RECIPIENT_ALIASES = {
+  email: ["email", "emailaddress", "mail"],
+  firstName: ["firstname", "first", "forename", "givenname"],
+  lastName: ["lastname", "last", "surname", "familyname"],
+  name: ["name", "fullname"],
+  role: ["role", "department", "dept", "position", "jobtitle", "title"],
+  group: ["group", "type", "category", "comptype"],
+  organisation: ["organisation", "organization", "company", "venue", "org"],
+} as const;
+
+/** Bulk crew / comp list: email + name required; role, group and organisation optional. */
+export function parseRecipientsCsv(text: string): RecipientRow[] {
+  const parsed = Papa.parse<Record<string, string>>(text.trim(), { header: true, skipEmptyLines: true });
+  const headers = parsed.meta.fields ?? [];
+  const col = (k: keyof typeof RECIPIENT_ALIASES) =>
+    headers.find((h) => (RECIPIENT_ALIASES[k] as readonly string[]).includes(norm(h)));
+  const cols = Object.fromEntries((Object.keys(RECIPIENT_ALIASES) as (keyof typeof RECIPIENT_ALIASES)[]).map((k) => [k, col(k)]));
+  if (!cols.email) throw new Error(`Couldn't find an email column. Headers found: ${headers.join(", ")}.`);
+  if (!cols.firstName && !cols.name) throw new Error("Add a name column (or first name / last name columns).");
+  return parsed.data.map((raw) => {
+    const get = (k: keyof typeof RECIPIENT_ALIASES) => (cols[k] ? String(raw[cols[k]!] ?? "").trim() : "");
+    let firstName = get("firstName");
+    let lastName = get("lastName");
+    if (!firstName && get("name")) {
+      const [first, ...rest] = get("name").split(/\s+/);
+      firstName = first;
+      lastName = rest.join(" ");
+    }
+    return { email: get("email"), firstName, lastName, role: get("role"), group: get("group"), organisation: get("organisation") };
+  });
 }

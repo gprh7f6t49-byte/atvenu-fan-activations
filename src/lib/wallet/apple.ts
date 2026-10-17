@@ -4,6 +4,7 @@ import type { PassRecord } from "../fans";
 import { appleWalletConfig, config } from "../config";
 import { iconImage, logoImage, rgbString, stripImage } from "./images";
 import { formatShowDate, nextShow, redemptionInstructions } from "./content";
+import { passBadge } from "../discount";
 
 export const appleWalletEnabled = () => appleWalletConfig() !== null;
 
@@ -12,6 +13,9 @@ export async function buildApplePass(a: Activation, shows: Show[], pass: PassRec
   if (!cfg) throw new Error("Apple Wallet is not configured");
 
   const upcoming = nextShow(shows);
+  const badge = passBadge(a.kind, pass.recipient_group);
+  const holder = [pass.first_name, pass.last_name].filter(Boolean).join(" ") || pass.email;
+  const holderDetail = [pass.role, pass.organisation].filter(Boolean).join(" · ");
   const passJson = {
     formatVersion: 1,
     passTypeIdentifier: cfg.passTypeIdentifier,
@@ -24,15 +28,18 @@ export async function buildApplePass(a: Activation, shows: Show[], pass: PassRec
     labelColor: rgbString(a.accent_color),
     sharingProhibited: true,
     coupon: {
-      headerFields: [{ key: "tour", label: "TOUR", value: a.tour_name }],
+      headerFields: badge
+        ? [{ key: "type", label: "PASS", value: badge }]
+        : [{ key: "tour", label: "TOUR", value: a.tour_name }],
       primaryFields: [{ key: "offer", label: a.artist_name.toUpperCase(), value: a.offer_headline }],
       secondaryFields: [
-        { key: "fan", label: "FAN", value: [pass.first_name, pass.last_name].filter(Boolean).join(" ") || pass.email },
+        { key: "holder", label: a.kind === "fan" ? "FAN" : "NAME", value: holder },
         { key: "code", label: "CODE", value: pass.code },
       ],
-      auxiliaryFields: upcoming
-        ? [{ key: "next", label: "NEXT SHOW", value: `${upcoming.city} · ${formatShowDate(upcoming.show_date)}` }]
-        : [],
+      auxiliaryFields: [
+        ...(holderDetail ? [{ key: "role", label: a.kind === "crew" ? "DEPARTMENT" : "GROUP", value: holderDetail }] : []),
+        ...(upcoming ? [{ key: "next", label: "NEXT SHOW", value: `${upcoming.city} · ${formatShowDate(upcoming.show_date)}` }] : []),
+      ],
       backFields: [
         { key: "how", label: "How to redeem", value: redemptionInstructions(a) },
         ...(a.offer_terms ? [{ key: "terms", label: "Terms", value: a.offer_terms }] : []),

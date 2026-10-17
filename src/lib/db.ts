@@ -127,6 +127,31 @@ CREATE TABLE IF NOT EXISTS emails (
 );
 `;
 
+// Columns added after the first pilot release. Applied on start-up so existing
+// databases upgrade in place.
+const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
+  // fan = public opt-in page; crew = staff discount; comp = venue / management comps
+  ["activations", "kind", "TEXT NOT NULL DEFAULT 'fan' CHECK (kind IN ('fan','crew','comp'))"],
+  ["activations", "discount_type", "TEXT NOT NULL DEFAULT 'percent' CHECK (discount_type IN ('percent','amount'))"],
+  ["activations", "discount_value", "REAL"],
+  ["activations", "discount_currency", "TEXT"],
+  // 1 = each code is good for one order (fans, comps); 0 = reusable all tour (crew)
+  ["activations", "single_use", "INTEGER NOT NULL DEFAULT 1"],
+  ["opt_ins", "role", "TEXT"],
+  ["opt_ins", "recipient_group", "TEXT"],
+  ["opt_ins", "organisation", "TEXT"],
+  ["opt_ins", "issued_by_admin", "INTEGER NOT NULL DEFAULT 0"],
+  ["opt_ins", "revoked_at", "TEXT"],
+  ["redemptions", "discount_amount", "REAL"],
+];
+
+function migrate(conn: DatabaseSync) {
+  for (const [table, column, ddl] of ADDED_COLUMNS) {
+    const cols = conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+}
+
 const globalForDb = globalThis as unknown as { __activationsDb?: DatabaseSync };
 
 export function db(): DatabaseSync {
@@ -135,6 +160,7 @@ export function db(): DatabaseSync {
     const conn = new DatabaseSync(DB_PATH);
     conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
     conn.exec(SCHEMA);
+    migrate(conn);
     globalForDb.__activationsDb = conn;
   }
   return globalForDb.__activationsDb;

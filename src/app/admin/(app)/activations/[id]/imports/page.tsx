@@ -28,7 +28,7 @@ export default async function ImportsPage({ params, searchParams }: PageProps<"/
             <span className="font-semibold tabular-nums">{fmtInt(stats.codes_available)}</span> available of{" "}
             <span className="tabular-nums">{fmtInt(stats.codes_total)}</span> loaded
           </p>
-          <ActionForm action={importCodesAction.bind(null, id)} submitLabel="Upload codes" pendingLabel="Importing…">
+          <ActionForm action={importCodesAction.bind(null, id)} submitLabel="Upload codes" pendingLabel="Importing…" resetOnSuccess>
             <input type="file" name="file" accept=".csv,text/csv,text/plain" required className="block text-sm" />
           </ActionForm>
           <a href="/samples/promo-codes.csv" className="mt-3 inline-block text-xs text-zinc-500 underline">Sample codes CSV</a>
@@ -37,10 +37,10 @@ export default async function ImportsPage({ params, searchParams }: PageProps<"/
         <section className="card">
           <h2 className="font-semibold">2. Import redemptions (sales)</h2>
           <p className="mb-4 mt-1 text-sm text-zinc-600">
-            After each show, export the orders that used a promo code from atVenu. We match each sale&apos;s code to the fan who
-            claimed it. Recognised columns: code, order ID, total, currency, items, date, venue, city.
+            After each show, export the orders that used a promo code from atVenu. We match each sale&apos;s code to the person who
+            claimed it. Recognised columns: code, order ID, total, currency, items, discount, date, venue, city.
           </p>
-          <ActionForm action={importRedemptionsAction.bind(null, id)} submitLabel="Upload sales" pendingLabel="Matching…">
+          <ActionForm action={importRedemptionsAction.bind(null, id)} submitLabel="Upload sales" pendingLabel="Matching…" resetOnSuccess>
             <input type="file" name="file" accept=".csv,text/csv" required className="block text-sm" />
           </ActionForm>
           <a href="/samples/redemptions.csv" className="mt-3 inline-block text-xs text-zinc-500 underline">Sample redemptions CSV</a>

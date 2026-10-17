@@ -3,6 +3,7 @@ import type { Activation, Show } from "../activations";
 import type { PassRecord } from "../fans";
 import { config, googleWalletConfig } from "../config";
 import { formatShowDate, nextShow, redemptionInstructions } from "./content";
+import { passBadge } from "../discount";
 
 export const googleWalletEnabled = () => googleWalletConfig() !== null;
 
@@ -30,7 +31,7 @@ export async function buildGoogleSaveUrl(a: Activation, shows: Show[], pass: Pas
     state: "ACTIVE",
     cardTitle: text(a.artist_name),
     header: text(a.offer_headline),
-    subheader: text(a.tour_name),
+    subheader: text([passBadge(a.kind, pass.recipient_group), a.tour_name].filter(Boolean).join(" · ")),
     hexBackgroundColor: a.primary_color,
     barcode: { type: "QR_CODE", value: pass.code, alternateText: pass.code },
     ...(publicImages && {
@@ -39,6 +40,9 @@ export async function buildGoogleSaveUrl(a: Activation, shows: Show[], pass: Pas
     }),
     textModulesData: [
       { id: "code", header: "Code", body: pass.code },
+      ...(a.kind !== "fan"
+        ? [{ id: "holder", header: "Name", body: [[pass.first_name, pass.last_name].filter(Boolean).join(" "), pass.role, pass.organisation].filter(Boolean).join(" · ") }]
+        : []),
       ...(upcoming ? [{ id: "next", header: "Next show", body: `${upcoming.venue}, ${upcoming.city} · ${formatShowDate(upcoming.show_date)}` }] : []),
       { id: "how", header: "How to redeem", body: redemptionInstructions(a) },
       ...(a.offer_terms ? [{ id: "terms", header: "Terms", body: a.offer_terms }] : []),

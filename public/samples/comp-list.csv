@@ -1,0 +1,21 @@
+Name,Email,Group,Organisation,Role
+Beth Lowe,venue.manager0@example.com,Venue,Wembley Stadium,Venue Manager
+Phil Price,ops0@example.com,Venue,Wembley Stadium,Operations
+Mick Price,venue.manager1@example.com,Venue,Heaton Park,Venue Manager
+Lee Clarke,ops1@example.com,Venue,Heaton Park,Operations
+Rob Lowe,venue.manager2@example.com,Venue,Croke Park,Venue Manager
+Beth Doyle,ops2@example.com,Venue,Croke Park,Operations
+Rob Price,venue.manager3@example.com,Venue,Johan Cruijff ArenA,Venue Manager
+Jo Doyle,ops3@example.com,Venue,Johan Cruijff ArenA,Operations
+Tasha Moss,venue.manager4@example.com,Venue,Olympiastadion,Venue Manager
+Phil Hughes,ops4@example.com,Venue,Olympiastadion,Operations
+Sian Price,venue.manager5@example.com,Venue,Stade de France,Venue Manager
+Lee Moss,ops5@example.com,Venue,Stade de France,Operations
+Jo Evans,venue.manager6@example.com,Venue,Estadio Metropolitano,Venue Manager
+Anna Hart,ops6@example.com,Venue,Estadio Metropolitano,Operations
+Tasha Doyle,mgmt0@example.com,Management,Sample Management Co,Artist Manager
+Beth Hart,mgmt1@example.com,Management,Sample Management Co,Tour Manager
+Anna Moss,mgmt2@example.com,Management,Sample Management Co,Day-to-day Manager
+Kerry Shaw,mgmt3@example.com,Management,Sample Management Co,Business Manager
+Lee Lowe,label0@example.com,Label,Sample Records,Head of Marketing
+Mick Hughes,label1@example.com,Label,Sample Records,A&R

@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { getActivation } from "@/lib/activations";
-import { StatusBadge } from "@/components/status-badge";
+import { KindBadge, StatusBadge } from "@/components/status-badge";
 import { setStatusAction } from "../../actions";
 import { config } from "@/lib/config";
+import { formatDiscount, KIND_LABELS } from "@/lib/discount";
 import { Tabs } from "./tabs";
 
 export default async function ActivationLayout({ children, params }: LayoutProps<"/admin/activations/[id]">) {
@@ -10,6 +11,7 @@ export default async function ActivationLayout({ children, params }: LayoutProps
   const a = getActivation(id);
   if (!a) notFound();
   const landing = `${config.baseUrl}/a/${a.slug}`;
+  const discount = formatDiscount(a);
 
   return (
     <>
@@ -17,12 +19,18 @@ export default async function ActivationLayout({ children, params }: LayoutProps
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">{a.artist_name}</h1>
+            <KindBadge kind={a.kind} />
             <StatusBadge status={a.status} />
           </div>
-          <p className="text-sm text-zinc-500">{a.tour_name} · {a.offer_headline}</p>
-          <a href={`/a/${a.slug}`} target="_blank" className="mt-1 inline-block font-mono text-xs text-zinc-600 underline">
-            {landing}
-          </a>
+          <p className="text-sm text-zinc-500">
+            {KIND_LABELS[a.kind].name} · {a.tour_name} · {a.offer_headline}
+            {discount && !a.offer_headline.includes(discount) ? ` (${discount})` : ""} · {a.single_use ? "one order per code" : "reusable all tour"}
+          </p>
+          {a.kind === "fan" && (
+            <a href={`/a/${a.slug}`} target="_blank" className="mt-1 inline-block font-mono text-xs text-zinc-600 underline">
+              {landing}
+            </a>
+          )}
         </div>
         <div className="flex gap-2">
           {a.status !== "live" && (
@@ -37,7 +45,7 @@ export default async function ActivationLayout({ children, params }: LayoutProps
           )}
         </div>
       </div>
-      <Tabs id={a.id} />
+      <Tabs id={a.id} peopleLabel={KIND_LABELS[a.kind].people} peopleHref={a.kind === "fan" ? "fans" : "recipients"} />
       <div className="mt-6">{children}</div>
     </>
   );

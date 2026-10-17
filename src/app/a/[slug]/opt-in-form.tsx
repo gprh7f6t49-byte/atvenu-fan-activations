@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState } from "react";
 import { COUNTRIES } from "@/lib/countries";
 import type { OptInState } from "./actions";
 
@@ -16,7 +16,16 @@ export function OptInForm({ action, copy, privacyUrl, source }: Props) {
   const fe = state.fieldErrors ?? {};
 
   return (
-    <form action={formAction} className="space-y-4" noValidate>
+    // onSubmit (not the action prop) so a validation error doesn't wipe what the fan typed.
+    <form
+      className="space-y-4"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => formAction(data));
+      }}
+    >
       <input type="hidden" name="source" value={source ?? ""} />
       <div className="absolute -left-[9999px]" aria-hidden="true">
         <label>

@@ -10,7 +10,7 @@ export default async function SettingsPage({ params }: PageProps<"/admin/activat
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
       <div className="card">
         <ActionForm action={updateActivationAction.bind(null, id)} submitLabel="Save changes" className="space-y-8">
-          <ActivationFields a={a} shows={listShows(id)} />
+          <ActivationFields kind={a.kind} a={a} shows={listShows(id)} />
         </ActionForm>
       </div>
       <aside className="space-y-3">

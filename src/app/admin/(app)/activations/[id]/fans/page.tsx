@@ -1,11 +1,14 @@
+import { redirect } from "next/navigation";
+import { getActivation } from "@/lib/activations";
 import { listFans } from "@/lib/fans";
-import { fmtDateTime, fmtMoney } from "@/lib/format";
+import { fmtDateTime, fmtRevenue } from "@/lib/format";
 
 const Tick = ({ on }: { on: number | string | null }) =>
   on ? <span className="text-emerald-600" aria-label="yes">✓</span> : <span className="text-zinc-300" aria-label="no">–</span>;
 
 export default async function FansPage({ params, searchParams }: PageProps<"/admin/activations/[id]/fans">) {
   const { id } = await params;
+  if (getActivation(id)?.kind !== "fan") redirect(`/admin/activations/${id}/recipients`);
   const q = typeof (await searchParams).q === "string" ? ((await searchParams).q as string) : "";
   const fans = listFans(id, q || undefined);
 
@@ -53,7 +56,7 @@ export default async function FansPage({ params, searchParams }: PageProps<"/adm
                   <Tick on={f.consent_artist} /><Tick on={f.consent_promoter} /><Tick on={f.consent_atvenu} />
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{f.orders}</td>
-                <td className="px-4 py-2 text-right tabular-nums">{f.orders ? fmtMoney(f.spend, f.currency) : "—"}</td>
+                <td className="px-4 py-2 text-right tabular-nums">{f.orders ? fmtRevenue(f.spend) : "—"}</td>
               </tr>
             ))}
             {fans.length === 0 && (

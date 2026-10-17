@@ -10,7 +10,7 @@ import { OptInForm } from "./opt-in-form";
 
 export async function generateMetadata({ params }: PageProps<"/a/[slug]">): Promise<Metadata> {
   const a = getActivationBySlug((await params).slug);
-  if (!a) return {};
+  if (!a || a.kind !== "fan") return {};
   return { title: `${a.artist_name} — ${a.offer_headline}`, description: a.tagline ?? a.description ?? undefined };
 }
 
@@ -18,7 +18,8 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
   const { slug } = await params;
   const sp = await searchParams;
   const a = getActivationBySlug(slug);
-  if (!a) notFound();
+  // Crew and comp passes are issued by the merch team; there is no public sign-up.
+  if (!a || a.kind !== "fan") notFound();
 
   const preview = a.status === "draft" && (await isAdmin());
   if (a.status === "draft" && !preview) notFound();

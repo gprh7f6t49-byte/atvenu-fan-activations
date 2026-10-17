@@ -1,15 +1,15 @@
 /**
- * Seeds the Oasis Live '27 example activation.
+ * Seeds the Oasis Live '27 example: a fan activation, crew sales and venue & management comps.
  *
- *   npm run seed           activation + 500 promo codes (status: live)
- *   npm run seed -- --demo also creates sample fans and imports sample sales so the dashboard has data
+ *   npm run seed           activations + promo codes (status: live)
+ *   npm run seed -- --demo also issues sample passes and imports sample sales so the dashboards have data
  *
  * Tour dates, promoter and fans are illustrative sample data, not real announcements.
  */
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { createActivation, getActivationBySlug, replaceShows } from "../src/lib/activations";
-import { parseCodesCsv, parseRedemptionsCsv, toCsv } from "../src/lib/csv";
+import { createActivation, getActivationBySlug, replaceShows, type Activation, type ActivationInput } from "../src/lib/activations";
+import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv, toCsv } from "../src/lib/csv";
 import { db } from "../src/lib/db";
 import { importCodes, importRedemptions, optInFan } from "../src/lib/fans";
 
@@ -32,9 +32,23 @@ const SHOWS = [
   { show_date: "2027-07-14", venue: "Estadio Metropolitano", city: "Madrid", country: "ES", latitude: 40.4362, longitude: -3.5995 },
 ];
 
-function makeCodes(n: number) {
+function makeCodes(n: number, prefix = "OAS27") {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — easier to read out at a till
-  return Array.from({ length: n }, () => `OAS27-${Array.from({ length: 6 }, () => pick(alphabet.split(""))).join("")}`);
+  return Array.from({ length: n }, () => `${prefix}-${Array.from({ length: 6 }, () => pick(alphabet.split(""))).join("")}`);
+}
+
+const BRAND = { primary_color: "#0b0b0c", accent_color: "#e8c547", text_color: "#ffffff" };
+
+function ensureActivation(input: ActivationInput): Activation {
+  const existing = getActivationBySlug(input.slug);
+  if (existing) {
+    console.log(`Activation "${input.slug}" already exists — skipping create.`);
+    return existing;
+  }
+  const id = createActivation(input);
+  replaceShows(id, SHOWS);
+  console.log(`Created ${input.kind} activation "${input.slug}".`);
+  return getActivationBySlug(input.slug)!;
 }
 
 let activation = getActivationBySlug(SLUG);
@@ -59,6 +73,11 @@ if (activation) {
     privacy_url: "https://www.atvenu.com/privacy",
     status: "live",
     pass_expires_at: "2027-07-31T23:59:59.000Z",
+    kind: "fan",
+    discount_type: "percent",
+    discount_value: 15,
+    discount_currency: null,
+    single_use: 1,
   });
   replaceShows(id, SHOWS);
   activation = getActivationBySlug(SLUG)!;
@@ -127,4 +146,120 @@ if (demo) {
   console.log(`Created ${fans.length} demo fans; imported ${res.imported} sales (${res.matched} matched).`);
 }
 
-console.log(`\nLanding page: /a/${SLUG}`);
+
+// ---- Crew sales: 25% off, reusable all tour --------------------------------
+const crew = ensureActivation({
+  ...BRAND,
+  kind: "crew",
+  slug: "crew-oasis-live-27",
+  artist_name: "Oasis",
+  tour_name: "Live '27 European Tour",
+  offer_headline: "25% off merch",
+  offer_terms: "Crew discount for touring personnel only. Personal to the named holder — not transferable. Sample activation for pilot purposes.",
+  discount_type: "percent",
+  discount_value: 25,
+  discount_currency: null,
+  single_use: 0,
+  status: "live",
+  pass_expires_at: "2027-07-31T23:59:59.000Z",
+  tagline: null, description: null, promoter_name: null, hero_image_url: null, privacy_url: null,
+});
+const crewCodesCsv = toCsv(makeCodes(120, "CREW27").map((code) => ({ "Promo Code": code, Discount: "25%", "Max Uses": "Unlimited" })));
+writeFileSync(path.join(samples, "crew-codes.csv"), crewCodesCsv);
+console.log(`Imported ${importCodes(crew.id, parseCodesCsv(crewCodesCsv).codes, "crew-codes.csv (seed)").imported} crew codes.`);
+
+const DEPARTMENTS = ["Production", "Audio", "Lighting", "Video", "Backline", "Rigging", "Catering", "Wardrobe", "Security", "Merch"];
+const crewFirst = ["Dave", "Sian", "Gaz", "Kerry", "Phil", "Jo", "Rob", "Beth", "Mick", "Tasha", "Lee", "Anna"];
+const crewLast = ["Hughes", "Price", "Doyle", "Evans", "Clarke", "Moss", "Reid", "Hart", "Shaw", "Lowe"];
+const crewList = Array.from({ length: 36 }, (_, i) => {
+  const first = pick(crewFirst);
+  const last = pick(crewLast);
+  return { Name: `${first} ${last}`, Email: `${first}.${last}.crew${i}@example.com`.toLowerCase(), Department: DEPARTMENTS[i % DEPARTMENTS.length] };
+});
+writeFileSync(path.join(samples, "crew-list.csv"), toCsv(crewList));
+
+// ---- Venue & management comps: £40 off, one order --------------------------
+const comps = ensureActivation({
+  ...BRAND,
+  kind: "comp",
+  slug: "comps-oasis-live-27",
+  artist_name: "Oasis",
+  tour_name: "Live '27 European Tour",
+  offer_headline: "£40 off merch",
+  offer_terms: "Comp issued by the merch team. Personal to the named holder — not transferable or exchangeable for cash. Sample activation for pilot purposes.",
+  discount_type: "amount",
+  discount_value: 40,
+  discount_currency: "GBP",
+  single_use: 1,
+  status: "live",
+  pass_expires_at: "2027-07-31T23:59:59.000Z",
+  tagline: null, description: null, promoter_name: null, hero_image_url: null, privacy_url: null,
+});
+const compCodesCsv = toCsv(makeCodes(80, "COMP27").map((code) => ({ "Promo Code": code, Discount: "40.00", "Max Uses": 1 })));
+writeFileSync(path.join(samples, "comp-codes.csv"), compCodesCsv);
+console.log(`Imported ${importCodes(comps.id, parseCodesCsv(compCodesCsv).codes, "comp-codes.csv (seed)").imported} comp codes.`);
+
+const compList = [
+  ...SHOWS.filter((s, i, all) => all.findIndex((x) => x.venue === s.venue) === i).flatMap((s, i) => [
+    { Name: `${pick(crewFirst)} ${pick(crewLast)}`, Email: `venue.manager${i}@example.com`, Group: "Venue", Organisation: s.venue, Role: "Venue Manager" },
+    { Name: `${pick(crewFirst)} ${pick(crewLast)}`, Email: `ops${i}@example.com`, Group: "Venue", Organisation: s.venue, Role: "Operations" },
+  ]),
+  ...["Artist Manager", "Tour Manager", "Day-to-day Manager", "Business Manager"].map((role, i) => ({
+    Name: `${pick(crewFirst)} ${pick(crewLast)}`, Email: `mgmt${i}@example.com`, Group: "Management", Organisation: "Sample Management Co", Role: role,
+  })),
+  ...["Head of Marketing", "A&R"].map((role, i) => ({
+    Name: `${pick(crewFirst)} ${pick(crewLast)}`, Email: `label${i}@example.com`, Group: "Label", Organisation: "Sample Records", Role: role,
+  })),
+];
+writeFileSync(path.join(samples, "comp-list.csv"), toCsv(compList));
+
+if (demo) {
+  const issueAll = (a: Activation, rows: ReturnType<typeof parseRecipientsCsv>) =>
+    rows.map((r) =>
+      optInFan(a, {
+        email: r.email,
+        firstName: r.firstName,
+        lastName: r.lastName,
+        role: r.role || undefined,
+        recipientGroup: a.kind === "comp" ? r.group || "Other" : undefined,
+        organisation: r.organisation || undefined,
+        issuedByAdmin: true,
+        consentArtist: false,
+        consentPromoter: false,
+        consentAtvenu: false,
+        consentSnapshot: JSON.stringify({ seeded: true, issued_by_admin: true }),
+      }),
+    );
+  const markWallet = db().prepare("UPDATE opt_ins SET email_sent_at = created_at, apple_pass_at = ?, google_pass_at = ? WHERE id = ?");
+  const salesFor = (issued: ReturnType<typeof issueAll>, share: number, ordersEach: () => number, total: () => number, prefix: string) => {
+    const rows: Record<string, string | number>[] = [];
+    issued.forEach((r) => {
+      const w = rand();
+      markWallet.run(w < 0.55 ? new Date().toISOString() : null, w >= 0.55 && w < 0.85 ? new Date().toISOString() : null, r.optInId);
+      if (rand() > share) return;
+      for (let n = ordersEach(); n > 0; n--) {
+        const show = pick(SHOWS);
+        rows.push({
+          "Order ID": `${prefix}-${rows.length + 1000}`, Date: `${show.show_date} 17:${String(Math.floor(rand() * 60)).padStart(2, "0")}`,
+          Venue: show.venue, City: show.city, "Promo Code": r.code, Items: 1 + Math.floor(rand() * 3),
+          Total: total().toFixed(2), Currency: show.country === "GB" ? "GBP" : "EUR",
+        });
+      }
+    });
+    return rows;
+  };
+
+  const crewIssued = issueAll(crew, parseRecipientsCsv(toCsv(crewList)));
+  const crewSales = salesFor(crewIssued, 0.75, () => 1 + Math.floor(rand() * 3), () => 24 + rand() * 60, "CRW");
+  const crewParsed = parseRedemptionsCsv(toCsv(crewSales));
+  const crewRes = importRedemptions(crew.id, crewParsed.rows, "crew-sales.csv (seed)", crewParsed.skipped);
+  console.log(`Issued ${crewIssued.length} crew passes; imported ${crewRes.imported} crew sales.`);
+
+  const compIssued = issueAll(comps, parseRecipientsCsv(toCsv(compList)));
+  const compSales = salesFor(compIssued, 0.6, () => 1, () => rand() * 35, "CMP");
+  const compParsed = parseRedemptionsCsv(toCsv(compSales));
+  const compRes = importRedemptions(comps.id, compParsed.rows, "comp-sales.csv (seed)", compParsed.skipped);
+  console.log(`Issued ${compIssued.length} comp passes; imported ${compRes.imported} comp sales.`);
+}
+
+console.log(`\nFan landing page: /a/${SLUG} · Admin: /admin`);

@@ -27,7 +27,7 @@ export async function submitOptIn(slug: string, _prev: OptInState, form: FormDat
   if (form.get("website")) return { error: "Something went wrong. Please try again." };
 
   const activation = getActivationBySlug(slug);
-  if (!activation || activation.status !== "live") return { error: "This offer isn't available right now." };
+  if (!activation || activation.kind !== "fan" || activation.status !== "live") return { error: "This offer isn't available right now." };
 
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? undefined;
