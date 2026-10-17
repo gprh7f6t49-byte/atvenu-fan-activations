@@ -26,6 +26,7 @@ export interface Activation {
   discount_value: number | null;
   discount_currency: string | null;
   single_use: number;
+  tour_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -81,6 +82,7 @@ const EDITABLE_FIELDS = [
   "discount_value",
   "discount_currency",
   "single_use",
+  "tour_id",
 ] as const satisfies readonly (keyof ActivationInput)[];
 
 export function listActivations(): (Activation & ActivationStats)[] {
@@ -128,10 +130,25 @@ export function setActivationStatus(id: string, status: ActivationStatus): void 
   db().prepare("UPDATE activations SET status = ?, updated_at = ? WHERE id = ?").run(status, nowIso(), id);
 }
 
+/** The activation's dates: its tour's dates when linked to a tour, otherwise its own list. */
 export function listShows(activationId: string): Show[] {
+  const tourId = (db().prepare("SELECT tour_id FROM activations WHERE id = ?").get(activationId) as { tour_id: string | null } | undefined)
+    ?.tour_id;
+  if (tourId) {
+    return db()
+      .prepare(
+        `SELECT id, ? AS activation_id, show_date, venue, city, country, latitude, longitude
+         FROM tour_dates WHERE tour_id = ? ORDER BY show_date`,
+      )
+      .all(activationId, tourId) as unknown as Show[];
+  }
   return db()
     .prepare("SELECT * FROM shows WHERE activation_id = ? ORDER BY show_date")
     .all(activationId) as unknown as Show[];
+}
+
+export function listActivationsForTour(tourId: string): Activation[] {
+  return db().prepare("SELECT * FROM activations WHERE tour_id = ? ORDER BY created_at").all(tourId) as unknown as Activation[];
 }
 
 export function replaceShows(activationId: string, shows: Omit<Show, "id" | "activation_id">[]): void {

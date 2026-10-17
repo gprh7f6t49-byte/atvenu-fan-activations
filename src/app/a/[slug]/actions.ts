@@ -11,6 +11,7 @@ import { rateLimited } from "@/lib/rate-limit";
 
 export interface OptInState {
   error?: string;
+  resent?: string;
   fieldErrors?: Partial<Record<"email" | "firstName" | "terms", string>>;
 }
 
@@ -75,16 +76,18 @@ export async function submitOptIn(slug: string, _prev: OptInState, form: FormDat
     throw err;
   }
 
-  if (!result.existing) {
-    const pass = getPassByToken(result.passToken);
-    if (pass) {
-      try {
-        await sendPassEmail(activation, listShows(activation.id), pass);
-      } catch (err) {
-        console.error("Failed to send pass email", err);
-      }
+  const pass = getPassByToken(result.passToken);
+  if (pass) {
+    try {
+      await sendPassEmail(activation, listShows(activation.id), pass);
+    } catch (err) {
+      console.error("Failed to send pass email", err);
     }
   }
-
-  redirect(`/p/${result.passToken}${result.existing ? "?returning=1" : ""}`);
+  // Someone who already signed up gets their pass re-sent by email rather than shown
+  // here, so typing another person's email can't reveal their code.
+  if (result.existing) {
+    return { resent: `You've already claimed a code. We've re-sent it to ${parsed.data.email.toLowerCase()}.` };
+  }
+  redirect(`/p/${result.passToken}`);
 }

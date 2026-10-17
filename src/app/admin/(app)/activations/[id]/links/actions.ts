@@ -1,0 +1,57 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getActivation } from "@/lib/activations";
+import { requireAdmin } from "@/lib/auth";
+import { createSignupLink, deleteSignupLink, getSignupLink, regeneratePin, setLinkActive } from "@/lib/signup-links";
+import { listTourCities } from "@/lib/tours";
+import type { FormState } from "../../../actions";
+
+const schema = z.object({
+  city: z.string().min(1, "Choose a city"),
+  label: z.string().trim().max(80).optional().transform((v) => v || null),
+  pass_scope: z.enum(["city", "tour"]),
+  expires_at: z.string().trim().optional().transform((v) => v || null),
+  max_signups: z.string().trim().optional().transform((v) => (v ? Number(v) : null)).pipe(z.number().int().positive().nullable()),
+});
+
+export async function createLinkAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  await requireAdmin();
+  const a = getActivation(activationId);
+  if (!a || a.kind === "fan" || !a.tour_id) return { error: "Link this activation to a tour first" };
+  const parsed = schema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const city = listTourCities(a.tour_id).find((c) => `${c.city}|${c.country}` === parsed.data.city);
+  if (!city) return { error: "That city isn't on the tour" };
+  const link = createSignupLink({
+    activationId,
+    city,
+    label: parsed.data.label,
+    passScope: parsed.data.pass_scope,
+    // A chosen expiry date runs to the end of that day (UTC).
+    expiresAt: parsed.data.expires_at ? new Date(`${parsed.data.expires_at}T23:59:59Z`).toISOString() : null,
+    maxSignups: parsed.data.max_signups,
+  });
+  revalidatePath(`/admin/activations/${activationId}`, "layout");
+  return { ok: `${city.city} link created — PIN ${link.pin}` };
+}
+
+async function forLink(activationId: string, linkId: string, fn: () => void) {
+  await requireAdmin();
+  if (getSignupLink(linkId)?.activation_id !== activationId) return;
+  fn();
+  revalidatePath(`/admin/activations/${activationId}`, "layout");
+}
+
+export async function newPinAction(activationId: string, linkId: string) {
+  await forLink(activationId, linkId, () => regeneratePin(linkId));
+}
+
+export async function setLinkActiveAction(activationId: string, linkId: string, active: boolean) {
+  await forLink(activationId, linkId, () => setLinkActive(linkId, active));
+}
+
+export async function deleteLinkAction(activationId: string, linkId: string) {
+  await forLink(activationId, linkId, () => deleteSignupLink(linkId));
+}

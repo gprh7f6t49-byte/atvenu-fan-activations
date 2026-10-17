@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Activation, ActivationKind, Show } from "@/lib/activations";
+import type { Tour } from "@/lib/tours";
 
 const showsToText = (shows: Show[]) =>
   shows
@@ -11,8 +13,13 @@ const DEFAULTS: Record<ActivationKind, { discount: number; singleUse: boolean; t
   comp: { discount: 100, singleUse: true, terms: "Comp issued by the merch team. Personal to the named holder — not transferable or exchangeable for cash." },
 };
 
-/** Shared fields for the create and edit activation forms. Fan-only fields are hidden for crew / comps. */
-export function ActivationFields({ kind, a, shows = [] }: { kind: ActivationKind; a?: Activation; shows?: Show[] }) {
+/**
+ * Shared fields for the create and edit activation forms. Fan-only fields are hidden for crew / comps.
+ * When a tour is chosen, artist, tour name and dates come from the tour instead of being typed here.
+ */
+export function ActivationFields({ kind, a, shows = [], tours = [], tour }: {
+  kind: ActivationKind; a?: Activation; shows?: Show[]; tours?: Tour[]; tour?: Tour;
+}) {
   const fan = kind === "fan";
   const d = DEFAULTS[kind];
   return (
@@ -21,8 +28,28 @@ export function ActivationFields({ kind, a, shows = [] }: { kind: ActivationKind
 
       <section className="grid gap-4 md:grid-cols-2">
         <h2 className="md:col-span-2 text-sm font-bold">Artist & tour</h2>
-        <Text name="artist_name" label="Artist" defaultValue={a?.artist_name} placeholder="Oasis" required />
-        <Text name="tour_name" label="Tour" defaultValue={a?.tour_name} placeholder="Live '27 European Tour" required />
+        {tours.length > 0 && (
+          <label className="block md:col-span-2">
+            <span className="label">Tour</span>
+            <select name="tour_id" defaultValue={tour?.id ?? ""} className="input">
+              {!tour && <option value="">— Not linked to a tour (enter artist, tour and dates below)</option>}
+              {tours.map((t) => <option key={t.id} value={t.id}>{t.artist_name} — {t.name}</option>)}
+            </select>
+            {tour ? (
+              <span className="mt-1 block text-xs text-zinc-500">
+                Artist, tour name, dates and cities come from the tour. <Link href={`/admin/tours/${tour.id}`} className="underline">Edit tour dates</Link>
+              </span>
+            ) : (
+              <span className="mt-1 block text-xs text-zinc-500">Pick a tour to use its dates and cities (needed for city sign-up links).</span>
+            )}
+          </label>
+        )}
+        {!tour && (
+          <>
+            <Text name="artist_name" label="Artist" defaultValue={a?.artist_name} placeholder="Oasis" />
+            <Text name="tour_name" label="Tour" defaultValue={a?.tour_name} placeholder="Live '27 European Tour" />
+          </>
+        )}
         {fan ? (
           <>
             <Text name="slug" label="Landing page URL slug" defaultValue={a?.slug} placeholder="oasis-2027" required hint="Fans visit /a/<slug>" />
@@ -105,6 +132,7 @@ export function ActivationFields({ kind, a, shows = [] }: { kind: ActivationKind
         </label>
       </section>
 
+      {!tour && (
       <section>
         <h2 className="mb-2 text-sm font-bold">Tour dates</h2>
         <p className="mb-2 text-xs text-zinc-500">
@@ -114,6 +142,7 @@ export function ActivationFields({ kind, a, shows = [] }: { kind: ActivationKind
         <textarea name="shows" rows={8} defaultValue={showsToText(shows)} className="input font-mono text-xs"
           placeholder="2027-06-12 | Wembley Stadium | London | GB | 51.5560 | -0.2796" />
       </section>
+      )}
     </div>
   );
 }

@@ -41,14 +41,20 @@ export async function buildGoogleSaveUrl(a: Activation, shows: Show[], pass: Pas
     textModulesData: [
       { id: "code", header: "Code", body: pass.code },
       ...(a.kind !== "fan"
-        ? [{ id: "holder", header: "Name", body: [[pass.first_name, pass.last_name].filter(Boolean).join(" "), pass.role, pass.organisation].filter(Boolean).join(" · ") }]
+        ? [...(pass.pass_scope === "city" && pass.link_city ? [{ id: "valid", header: "Valid in", body: pass.link_city }] : []),
+          { id: "holder", header: "Name", body: [[pass.first_name, pass.last_name].filter(Boolean).join(" "), pass.role, pass.organisation].filter(Boolean).join(" · ") }]
         : []),
       ...(upcoming ? [{ id: "next", header: "Next show", body: `${upcoming.venue}, ${upcoming.city} · ${formatShowDate(upcoming.show_date)}` }] : []),
-      { id: "how", header: "How to redeem", body: redemptionInstructions(a) },
+      { id: "how", header: "How to redeem", body: redemptionInstructions(a, pass) },
       ...(a.offer_terms ? [{ id: "terms", header: "Terms", body: a.offer_terms }] : []),
     ],
     linksModuleData: { uris: [{ uri: `${config.baseUrl}/p/${pass.pass_token}`, description: "View your pass", id: "pass" }] },
-    ...(a.pass_expires_at && { validTimeInterval: { end: { date: new Date(a.pass_expires_at).toISOString() } } }),
+    ...((pass.valid_until ?? a.pass_expires_at) && {
+      validTimeInterval: {
+        ...(pass.valid_from && { start: { date: pass.valid_from } }),
+        end: { date: new Date((pass.valid_until ?? a.pass_expires_at)!).toISOString() },
+      },
+    }),
   };
 
   const key = await importPKCS8(cfg.privateKey, "RS256");

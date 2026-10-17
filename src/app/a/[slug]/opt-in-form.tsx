@@ -69,6 +69,11 @@ export function OptInForm({ action, copy, privacyUrl, source }: Props) {
         <Check name="consent_atvenu">{copy.atvenu}</Check>
       </fieldset>
 
+      {state.resent && (
+        <p role="status" className="rounded-lg bg-emerald-500/15 px-3 py-2 text-sm text-emerald-100 ring-1 ring-emerald-400/40">
+          {state.resent}
+        </p>
+      )}
       {state.error && (
         <p role="alert" className="rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-200 ring-1 ring-red-400/40">
           {state.error}

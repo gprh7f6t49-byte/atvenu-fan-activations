@@ -8,7 +8,6 @@ import {
   generateSlug,
   getActivation,
   getActivationBySlug,
-  listShows,
   replaceShows,
   setActivationStatus,
   updateActivation,
@@ -17,6 +16,7 @@ import {
   type Show,
 } from "@/lib/activations";
 import { requireAdmin } from "@/lib/auth";
+import { getTour } from "@/lib/tours";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
 import { defaultHeadline } from "@/lib/discount";
 import { sendPassEmail } from "@/lib/email";
@@ -27,6 +27,7 @@ import {
   importCodes,
   importRedemptions,
   optInFan,
+  passShows,
   setRevoked,
 } from "@/lib/fans";
 
@@ -42,8 +43,9 @@ const optional = z.string().trim().optional().transform((v) => v || null);
 const activationSchema = z.object({
   kind: z.enum(["fan", "crew", "comp"]),
   slug: z.string().trim().toLowerCase().regex(/^([a-z0-9]+(?:-[a-z0-9]+)*)?$/, "Slug: lowercase letters, numbers and dashes only"),
-  artist_name: z.string().trim().min(1, "Artist name is required"),
-  tour_name: z.string().trim().min(1, "Tour name is required"),
+  tour_id: z.string().trim().optional().transform((v) => v || null),
+  artist_name: z.string().trim().optional().transform((v) => v ?? ""),
+  tour_name: z.string().trim().optional().transform((v) => v ?? ""),
   tagline: optional,
   description: optional,
   offer_headline: z.string().trim(),
@@ -91,6 +93,13 @@ function readActivationForm(form: FormData) {
   if (d.discount_type === "percent" && d.discount_value > 100) return { error: "A percentage discount can't be more than 100%" } as const;
   if (d.discount_type === "amount" && !d.discount_currency) return { error: "Choose the currency for a fixed-amount discount" } as const;
   if (d.kind === "fan" && !d.slug) return { error: "Choose a landing page URL slug" } as const;
+  if (d.tour_id) {
+    const tour = getTour(d.tour_id);
+    if (!tour) return { error: "That tour no longer exists" } as const;
+    d.artist_name = tour.artist_name;
+    d.tour_name = tour.name;
+  }
+  if (!d.artist_name || !d.tour_name) return { error: "Enter the artist and tour name, or pick a tour" } as const;
   try {
     const shows = parseShows(String(form.get("shows") ?? ""));
     const data = { ...d, offer_headline: d.offer_headline || defaultHeadline(d) } as ActivationInput;
@@ -109,7 +118,7 @@ export async function createActivationAction(_prev: FormState, form: FormData): 
   if (!read.data.slug) read.data.slug = generateSlug(read.data.kind, read.data.artist_name, read.data.tour_name);
   if (getActivationBySlug(read.data.slug)) return { error: "That slug is already in use" };
   const id = createActivation(read.data);
-  replaceShows(id, read.shows);
+  if (!read.data.tour_id) replaceShows(id, read.shows);
   redirect(`/admin/activations/${id}/imports?created=1`);
 }
 
@@ -125,7 +134,7 @@ export async function updateActivationAction(id: string, _prev: FormState, form:
   const clash = getActivationBySlug(read.data.slug);
   if (clash && clash.id !== id) return { error: "That slug is already in use" };
   updateActivation(id, read.data);
-  replaceShows(id, read.shows);
+  if (!read.data.tour_id) replaceShows(id, read.shows);
   revalidatePath(`/admin/activations/${id}`, "layout");
   return { ok: "Saved" };
 }
@@ -214,7 +223,7 @@ async function issueOne(activationId: string, r: RecipientInput, sendEmail: bool
   if (result.existing) return null;
   if (sendEmail) {
     const pass = getPassByToken(result.passToken);
-    if (pass) await sendPassEmail(activation, listShows(activation.id), pass);
+    if (pass) await sendPassEmail(activation, passShows(activation, pass), pass);
   }
   return result;
 }
@@ -285,6 +294,6 @@ export async function resendPassEmailAction(activationId: string, passToken: str
   await requireAdmin();
   const activation = getActivation(activationId);
   const pass = getPassByToken(passToken);
-  if (activation && pass && !pass.revoked_at) await sendPassEmail(activation, listShows(activation.id), pass);
+  if (activation && pass && !pass.revoked_at) await sendPassEmail(activation, passShows(activation, pass), pass);
   revalidatePath(`/admin/activations/${activationId}`, "layout");
 }

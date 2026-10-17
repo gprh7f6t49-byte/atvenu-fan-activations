@@ -38,10 +38,11 @@ export async function buildApplePass(a: Activation, shows: Show[], pass: PassRec
       ],
       auxiliaryFields: [
         ...(holderDetail ? [{ key: "role", label: a.kind === "crew" ? "DEPARTMENT" : "GROUP", value: holderDetail }] : []),
+        ...(pass.pass_scope === "city" && pass.link_city ? [{ key: "valid", label: "VALID IN", value: pass.link_city }] : []),
         ...(upcoming ? [{ key: "next", label: "NEXT SHOW", value: `${upcoming.city} · ${formatShowDate(upcoming.show_date)}` }] : []),
       ],
       backFields: [
-        { key: "how", label: "How to redeem", value: redemptionInstructions(a) },
+        { key: "how", label: "How to redeem", value: redemptionInstructions(a, pass) },
         ...(a.offer_terms ? [{ key: "terms", label: "Terms", value: a.offer_terms }] : []),
         ...(shows.length
           ? [{
@@ -91,7 +92,8 @@ export async function buildApplePass(a: Activation, shows: Show[], pass: PassRec
     );
   }
   if (upcoming) pkpass.setRelevantDate(new Date(`${upcoming.show_date}T16:00:00Z`));
-  if (a.pass_expires_at) pkpass.setExpirationDate(new Date(a.pass_expires_at));
+  const expires = pass.valid_until ?? a.pass_expires_at;
+  if (expires) pkpass.setExpirationDate(new Date(expires));
 
   return pkpass.getAsBuffer();
 }

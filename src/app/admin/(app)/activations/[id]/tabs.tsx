@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function Tabs({ id, peopleLabel, peopleHref }: { id: string; peopleLabel: string; peopleHref: string }) {
+export function Tabs({ id, peopleLabel, peopleHref, signupLinks }: { id: string; peopleLabel: string; peopleHref: string; signupLinks: boolean }) {
   const pathname = usePathname();
   const base = `/admin/activations/${id}`;
   const tabs = [
     { href: base, label: "Results" },
     { href: `${base}/${peopleHref}`, label: peopleLabel },
+    ...(signupLinks ? [{ href: `${base}/links`, label: "City sign-up links" }] : []),
     { href: `${base}/imports`, label: "Codes & sales imports" },
     { href: `${base}/emails`, label: "Email outbox" },
     { href: `${base}/settings`, label: "Settings" },

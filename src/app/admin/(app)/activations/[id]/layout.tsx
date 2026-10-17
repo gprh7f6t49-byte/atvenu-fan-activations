@@ -45,7 +45,7 @@ export default async function ActivationLayout({ children, params }: LayoutProps
           )}
         </div>
       </div>
-      <Tabs id={a.id} peopleLabel={KIND_LABELS[a.kind].people} peopleHref={a.kind === "fan" ? "fans" : "recipients"} />
+      <Tabs id={a.id} peopleLabel={KIND_LABELS[a.kind].people} peopleHref={a.kind === "fan" ? "fans" : "recipients"} signupLinks={a.kind !== "fan"} />
       <div className="mt-6">{children}</div>
     </>
   );

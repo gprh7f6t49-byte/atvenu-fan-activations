@@ -16,9 +16,15 @@ export function formatShowDate(isoDate: string): string {
   });
 }
 
-export function redemptionInstructions(a: Activation): string {
+export function redemptionInstructions(
+  a: Activation,
+  pass?: { pass_scope: "city" | "tour" | null; link_city: string | null },
+): string {
   const discount = formatDiscount(a);
-  const uses = a.single_use ? "One use only." : "Valid for every show on the tour.";
+  const cityOnly = pass?.pass_scope === "city" && pass.link_city;
+  const uses = cityOnly
+    ? `Valid at the ${pass.link_city} show${a.single_use ? " (one use)" : "s"} only.`
+    : a.single_use ? "One use only." : "Valid for every show on the tour.";
   switch (a.kind) {
     case "crew":
       return `Show this pass at any ${a.artist_name} merch stand on the ${a.tour_name}. Staff will scan the QR code (or enter the code underneath) to apply your crew discount${discount ? ` of ${discount}` : ""}. ${uses} This pass is personal to you — please don't share it.`;

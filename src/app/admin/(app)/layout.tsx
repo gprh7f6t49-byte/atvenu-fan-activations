@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
           <nav className="flex gap-4 text-sm text-zinc-600">
             <Link href="/admin" className="hover:text-zinc-900">Activations</Link>
+            <Link href="/admin/tours" className="hover:text-zinc-900">Tours</Link>
             <Link href="/admin/privacy" className="hover:text-zinc-900">Data requests</Link>
           </nav>
           <form action={logout} className="ml-auto">

@@ -1,5 +1,5 @@
 import { db, newId, newToken, nowIso, tx } from "./db";
-import type { Activation } from "./activations";
+import { listShows, type Activation, type Show } from "./activations";
 import type { RedemptionRow } from "./csv";
 
 export class CodePoolExhaustedError extends Error {
@@ -25,6 +25,10 @@ export interface OptInInput {
   recipientGroup?: string;
   organisation?: string;
   issuedByAdmin?: boolean;
+  /** Set when the person signed up through a city sign-up link. */
+  signupLinkId?: string;
+  validFrom?: string;
+  validUntil?: string;
 }
 
 export interface OptInResult {
@@ -82,8 +86,8 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
       .prepare(
         `INSERT INTO opt_ins (id, activation_id, fan_id, promo_code_id, pass_token, consent_artist, consent_promoter,
            consent_atvenu, consent_snapshot, source, ip, user_agent, created_at,
-           role, recipient_group, organisation, issued_by_admin)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           role, recipient_group, organisation, issued_by_admin, signup_link_id, valid_from, valid_until)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       )
       .run(
         optInId,
@@ -103,6 +107,9 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
         input.recipientGroup || null,
         input.organisation || null,
         input.issuedByAdmin ? 1 : 0,
+        input.signupLinkId ?? null,
+        input.validFrom ?? null,
+        input.validUntil ?? null,
       );
     return { optInId, passToken, code: code.code, existing: false };
   });
@@ -122,6 +129,11 @@ export interface PassRecord {
   organisation: string | null;
   revoked_at: string | null;
   email_sent_at: string | null;
+  valid_from: string | null;
+  valid_until: string | null;
+  link_city: string | null;
+  link_country: string | null;
+  pass_scope: "city" | "tour" | null;
   created_at: string;
 }
 
@@ -130,12 +142,24 @@ export function getPassByToken(token: string): PassRecord | undefined {
     .prepare(
       `SELECT o.id AS opt_in_id, o.pass_token, o.activation_id, c.code, c.status AS code_status,
               f.email, f.first_name, f.last_name, o.role, o.recipient_group, o.organisation,
-              o.revoked_at, o.email_sent_at, o.created_at
+              o.revoked_at, o.email_sent_at, o.valid_from, o.valid_until, o.created_at,
+              l.city AS link_city, l.country AS link_country, l.pass_scope
        FROM opt_ins o JOIN promo_codes c ON c.id = o.promo_code_id JOIN fans f ON f.id = o.fan_id
+       LEFT JOIN signup_links l ON l.id = o.signup_link_id
        WHERE o.pass_token = ?`,
     )
     .get(token) as unknown as PassRecord | undefined;
 }
+
+/** Dates shown on a pass: only the holder's city when their pass is limited to it. */
+export function passShows(a: Activation, pass: PassRecord): Show[] {
+  const shows = listShows(a.id);
+  if (pass.pass_scope !== "city" || !pass.link_city) return shows;
+  return shows.filter((s) => s.city === pass.link_city && s.country === pass.link_country);
+}
+
+export const passExpired = (pass: Pick<PassRecord, "valid_until">) =>
+  Boolean(pass.valid_until && new Date(pass.valid_until).getTime() < Date.now());
 
 export function markPassEvent(optInId: string, kind: "apple" | "google" | "email"): void {
   const col = { apple: "apple_pass_at", google: "google_pass_at", email: "email_sent_at" }[kind];
@@ -232,6 +256,7 @@ export interface FanRow {
   recipient_group: string | null;
   organisation: string | null;
   revoked_at: string | null;
+  link_city: string | null;
   email: string;
   first_name: string | null;
   last_name: string | null;
@@ -256,7 +281,8 @@ export function listFans(activationId: string, search?: string): FanRow[] {
   const like = search ? `%${search.trim()}%` : null;
   const rows = db()
     .prepare(
-      `SELECT o.id AS opt_in_id, o.pass_token, o.role, o.recipient_group, o.organisation, o.revoked_at, f.email, f.first_name, f.last_name, f.country, c.code, c.status AS code_status,
+      `SELECT o.id AS opt_in_id, o.pass_token, o.role, o.recipient_group, o.organisation, o.revoked_at,
+              (SELECT city FROM signup_links l WHERE l.id = o.signup_link_id) AS link_city, f.email, f.first_name, f.last_name, f.country, c.code, c.status AS code_status,
               o.consent_artist, o.consent_promoter, o.consent_atvenu, o.source,
               o.apple_pass_at, o.google_pass_at, o.email_sent_at, o.created_at AS opted_in_at,
               COUNT(r.id) AS orders, MAX(r.redeemed_at) AS last_purchase_at,
@@ -269,11 +295,12 @@ export function listFans(activationId: string, search?: string): FanRow[] {
        LEFT JOIN redemptions r ON r.promo_code_id = c.id
        WHERE o.activation_id = ?
          AND (? IS NULL OR f.email LIKE ? OR c.code LIKE ? OR f.first_name LIKE ? OR f.last_name LIKE ?
-              OR o.role LIKE ? OR o.organisation LIKE ?)
+              OR o.role LIKE ? OR o.organisation LIKE ?
+              OR EXISTS (SELECT 1 FROM signup_links l WHERE l.id = o.signup_link_id AND l.city LIKE ?))
        GROUP BY o.id
        ORDER BY o.created_at DESC`,
     )
-    .all(activationId, like, like, like, like, like, like, like) as unknown as (Omit<FanRow, "spend"> & { spend_json: string })[];
+    .all(activationId, like, like, like, like, like, like, like, like) as unknown as (Omit<FanRow, "spend"> & { spend_json: string })[];
   return rows.map(({ spend_json, ...row }) => ({ ...row, spend: JSON.parse(spend_json) }));
 }
 

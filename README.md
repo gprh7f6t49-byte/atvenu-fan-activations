@@ -15,7 +15,11 @@ Each activation has its own pool of atVenu codes and a **discount** set as a per
 (GBP / EUR / USD), with codes set to one order each or reusable. Set the same discount on the codes in atVenu.
 atVenu applies it at the till; this app shows it on the pass and estimates discount value in reports.
 
-Example: **Oasis — Live '27 European Tour** (sample data), with all three types.
+**Tours** hold the dates and cities (a city can have several dates). Activations attached to a tour use its dates
+automatically, and crew / comp activations can then get **PIN-protected city sign-up links**.
+
+Example: **Oasis — Live '27 European Tour** (sample data), with all three types and crew links for London,
+Manchester and Dublin.
 
 ## How it works
 
@@ -35,6 +39,23 @@ passes one by one or upload a CSV list (`name`, `email`, plus `department` for c
 for comps). Passes can be emailed, opened, re-sent or **revoked**. Revoking kills the pass page and wallet downloads;
 also disable the code in atVenu. Results show usage by department or group and the estimated discount given.
 If the atVenu export includes a discount column, that figure is used instead of the estimate.
+
+### Crew self sign-up (city links)
+
+1. **Tours → New tour**: add the dates (one by one or paste a list). Dates in the same city are grouped together.
+2. Create the crew activation from the tour page (**+ Crew sales**) and import its atVenu codes. Then **Go live**.
+3. **City sign-up links** tab: pick a city. You get a short URL (e.g. `/c/DEtEcCVS`) and a random 6-digit PIN.
+   Options: pass valid for that city's dates only or the whole tour, when the link closes (default: the morning after
+   the city's last show), and a cap on sign-ups.
+4. Share it with the **WhatsApp** / **Text message** buttons (pre-written message with link and PIN), copy the link or
+   PIN separately, or print the QR code for the production office.
+5. Crew open the link, enter the PIN, then give their name, email and department, and get their pass immediately
+   (also emailed). City-only passes show "Valid in London" and expire after the city's dates in Apple / Google Wallet.
+
+Security: a wrong PIN counts against the connection (10 per 15 minutes) and the link (100 per hour). Correct entries
+don't count, so crew sharing venue Wi-Fi aren't locked out. **New PIN** signs everyone out of the old one, and existing
+passes keep working. Signing up again with an email that already has a pass re-sends it by email rather than showing it,
+so nobody can pull up someone else's pass by typing their email. The fan landing page now works the same way.
 
 GDPR access and erasure requests are under **Admin → Data requests**.
 
@@ -83,9 +104,10 @@ Samples are in `public/samples/`: promo codes, redemptions, crew list and comp l
 
 ```
 src/app/a/[slug]       fan landing page + opt-in
+src/app/c/[token]      PIN-protected crew / comp city sign-up page
 src/app/p/[token]      fan pass page
 src/app/api/pass       .pkpass download, Google save link, QR image
-src/app/admin          admin (activations, results, fans, imports, outbox, settings, data requests)
+src/app/admin          admin (tours, activations, results, people, city links, imports, outbox, settings, data requests)
 src/lib                database, CSV import, wallet pass builders, email, auth
 scripts/seed.ts        Oasis example data
 ```
@@ -93,6 +115,7 @@ scripts/seed.ts        Oasis example data
 ## Pilot limitations (next steps)
 
 - One shared admin password → per-user logins / SSO.
+- Rate limits are in-memory (one server) → Redis or edge rate limiting when scaling out.
 - SQLite → Postgres when running more than one server.
 - CSV import → atVenu API sync (codes created and redemptions pulled automatically).
 - Wallet passes are static once issued → Apple/Google update push (e.g. mark as redeemed, new offers).

@@ -52,3 +52,8 @@ export function passBadge(kind: ActivationKind, group?: string | null): string |
   if (kind === "comp") return `${(group || "Guest").toUpperCase()} COMP`;
   return null;
 }
+
+export const CREW_DEPARTMENTS = [
+  "Production", "Stage management", "Audio", "Lighting", "Video", "Backline", "Rigging", "Carpentry",
+  "Wardrobe", "Hair & make-up", "Catering", "Security", "Merch", "Transport / drivers", "Local crew", "Other",
+] as const;

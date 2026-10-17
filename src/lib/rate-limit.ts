@@ -13,3 +13,13 @@ export function rateLimited(key: string, max: number, windowMs: number): boolean
   entry.count++;
   return entry.count > max;
 }
+
+/** For failure-only limits: check before acting, then record only failed attempts. */
+export function isLimited(key: string, max: number): boolean {
+  const entry = hits.get(key);
+  return Boolean(entry && entry.resetAt >= Date.now() && entry.count >= max);
+}
+
+export function recordHit(key: string, windowMs: number): void {
+  rateLimited(key, Number.POSITIVE_INFINITY, windowMs);
+}

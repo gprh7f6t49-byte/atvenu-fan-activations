@@ -1,6 +1,7 @@
 import { ActionForm } from "@/components/action-form";
 import { ActivationFields } from "@/components/activation-fields";
 import { getActivation, listShows } from "@/lib/activations";
+import { getTour, listTours } from "@/lib/tours";
 import { updateActivationAction } from "../../../actions";
 
 export default async function SettingsPage({ params }: PageProps<"/admin/activations/[id]/settings">) {
@@ -10,7 +11,7 @@ export default async function SettingsPage({ params }: PageProps<"/admin/activat
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
       <div className="card">
         <ActionForm action={updateActivationAction.bind(null, id)} submitLabel="Save changes" className="space-y-8">
-          <ActivationFields kind={a.kind} a={a} shows={listShows(id)} />
+          <ActivationFields kind={a.kind} a={a} shows={listShows(id)} tours={listTours()} tour={a.tour_id ? getTour(a.tour_id) : undefined} />
         </ActionForm>
       </div>
       <aside className="space-y-3">

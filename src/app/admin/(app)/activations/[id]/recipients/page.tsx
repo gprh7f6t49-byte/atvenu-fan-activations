@@ -107,6 +107,7 @@ export default async function RecipientsPage({ params, searchParams }: PageProps
                 <td className="px-4 py-2">
                   <div className="font-medium">{[p.first_name, p.last_name].filter(Boolean).join(" ") || "—"}</div>
                   <div className="text-xs text-zinc-500">{p.email}</div>
+                  {p.link_city && <div className="text-[11px] text-violet-700">Self sign-up · {p.link_city} link</div>}
                 </td>
                 <td className="px-3 py-2 text-xs">
                   {crew ? (p.role ?? "—") : (

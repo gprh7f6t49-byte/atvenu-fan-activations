@@ -1,5 +1,6 @@
 /**
- * Seeds the Oasis Live '27 example: a fan activation, crew sales and venue & management comps.
+ * Seeds the Oasis Live '27 example: the tour and its dates, a fan activation, crew sales and
+ * venue & management comps, plus PIN-protected city sign-up links for crew.
  *
  *   npm run seed           activations + promo codes (status: live)
  *   npm run seed -- --demo also issues sample passes and imports sample sales so the dashboards have data
@@ -8,10 +9,12 @@
  */
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { createActivation, getActivationBySlug, replaceShows, type Activation, type ActivationInput } from "../src/lib/activations";
+import { createActivation, getActivationBySlug, type Activation, type ActivationInput } from "../src/lib/activations";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv, toCsv } from "../src/lib/csv";
 import { db } from "../src/lib/db";
 import { importCodes, importRedemptions, optInFan } from "../src/lib/fans";
+import { createSignupLink, listSignupLinks, passWindow } from "../src/lib/signup-links";
+import { addTourDates, createTour, listTourCities, listTours } from "../src/lib/tours";
 
 const SLUG = "oasis-2027";
 const demo = process.argv.includes("--demo");
@@ -25,12 +28,23 @@ const SHOWS = [
   { show_date: "2027-06-11", venue: "Wembley Stadium", city: "London", country: "GB", latitude: 51.556, longitude: -0.2796 },
   { show_date: "2027-06-12", venue: "Wembley Stadium", city: "London", country: "GB", latitude: 51.556, longitude: -0.2796 },
   { show_date: "2027-06-18", venue: "Heaton Park", city: "Manchester", country: "GB", latitude: 53.534, longitude: -2.253 },
+  { show_date: "2027-06-19", venue: "Heaton Park", city: "Manchester", country: "GB", latitude: 53.534, longitude: -2.253 },
   { show_date: "2027-06-25", venue: "Croke Park", city: "Dublin", country: "IE", latitude: 53.3607, longitude: -6.2512 },
   { show_date: "2027-07-02", venue: "Johan Cruijff ArenA", city: "Amsterdam", country: "NL", latitude: 52.3144, longitude: 4.9419 },
   { show_date: "2027-07-06", venue: "Olympiastadion", city: "Berlin", country: "DE", latitude: 52.5147, longitude: 13.2395 },
   { show_date: "2027-07-10", venue: "Stade de France", city: "Paris", country: "FR", latitude: 48.9245, longitude: 2.3602 },
   { show_date: "2027-07-14", venue: "Estadio Metropolitano", city: "Madrid", country: "ES", latitude: 40.4362, longitude: -3.5995 },
 ];
+
+const TOUR_NAME = "Live '27 European Tour";
+const TOUR_ID =
+  listTours().find((t) => t.artist_name === "Oasis" && t.name === TOUR_NAME)?.id ??
+  (() => {
+    const id = createTour({ artist_name: "Oasis", name: TOUR_NAME, notes: "Sample tour for the pilot — dates are illustrative." });
+    addTourDates(id, SHOWS);
+    console.log(`Created tour "${TOUR_NAME}" with ${SHOWS.length} dates.`);
+    return id;
+  })();
 
 function makeCodes(n: number, prefix = "OAS27") {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I — easier to read out at a till
@@ -45,8 +59,7 @@ function ensureActivation(input: ActivationInput): Activation {
     console.log(`Activation "${input.slug}" already exists — skipping create.`);
     return existing;
   }
-  const id = createActivation(input);
-  replaceShows(id, SHOWS);
+  createActivation(input);
   console.log(`Created ${input.kind} activation "${input.slug}".`);
   return getActivationBySlug(input.slug)!;
 }
@@ -74,12 +87,12 @@ if (activation) {
     status: "live",
     pass_expires_at: "2027-07-31T23:59:59.000Z",
     kind: "fan",
+    tour_id: TOUR_ID,
     discount_type: "percent",
     discount_value: 15,
     discount_currency: null,
     single_use: 1,
   });
-  replaceShows(id, SHOWS);
   activation = getActivationBySlug(SLUG)!;
   console.log(`Created activation "${SLUG}" (${id}).`);
 }
@@ -151,6 +164,7 @@ if (demo) {
 const crew = ensureActivation({
   ...BRAND,
   kind: "crew",
+  tour_id: TOUR_ID,
   slug: "crew-oasis-live-27",
   artist_name: "Oasis",
   tour_name: "Live '27 European Tour",
@@ -182,6 +196,7 @@ writeFileSync(path.join(samples, "crew-list.csv"), toCsv(crewList));
 const comps = ensureActivation({
   ...BRAND,
   kind: "comp",
+  tour_id: TOUR_ID,
   slug: "comps-oasis-live-27",
   artist_name: "Oasis",
   tour_name: "Live '27 European Tour",
@@ -260,6 +275,41 @@ if (demo) {
   const compParsed = parseRedemptionsCsv(toCsv(compSales));
   const compRes = importRedemptions(comps.id, compParsed.rows, "comp-sales.csv (seed)", compParsed.skipped);
   console.log(`Issued ${compIssued.length} comp passes; imported ${compRes.imported} comp sales.`);
+}
+
+// ---- City sign-up links (PIN-protected) -----------------------------------
+const cities = listTourCities(TOUR_ID);
+const cityNamed = (name: string) => cities.find((c) => c.city === name)!;
+if (listSignupLinks(crew.id).length === 0) {
+  for (const name of ["London", "Manchester", "Dublin"]) {
+    createSignupLink({ activationId: crew.id, city: cityNamed(name), label: `${name} — local crew`, passScope: "city", expiresAt: null, maxSignups: 60 });
+  }
+  createSignupLink({ activationId: comps.id, city: cityNamed("London"), label: "Wembley — venue staff", passScope: "city", expiresAt: null, maxSignups: 25 });
+}
+const links = listSignupLinks(crew.id);
+for (const l of [...links, ...listSignupLinks(comps.id)]) console.log(`Sign-up link ${l.label}: /c/${l.token}  PIN ${l.pin}`);
+
+if (demo) {
+  // A few local crew who signed up themselves through the London link.
+  const london = links.find((l) => l.city === "London")!;
+  const window = passWindow(london, cityNamed("London"));
+  const locals = [["Ade", "Okafor", "Local crew"], ["Ellie", "Ward", "Catering"], ["Ravi", "Shah", "Security"], ["Kate", "Flynn", "Local crew"]];
+  locals.forEach(([first, last, dept]) =>
+    optInFan(crew, {
+      email: `${first}.${last}.local@example.com`.toLowerCase(),
+      firstName: first,
+      lastName: last,
+      role: dept,
+      consentArtist: false,
+      consentPromoter: false,
+      consentAtvenu: false,
+      consentSnapshot: JSON.stringify({ seeded: true, self_signup: true }),
+      source: "London sign-up link",
+      signupLinkId: london.id,
+      ...window,
+    }),
+  );
+  console.log(`Added ${locals.length} self sign-ups via the London crew link.`);
 }
 
 console.log(`\nFan landing page: /a/${SLUG} · Admin: /admin`);

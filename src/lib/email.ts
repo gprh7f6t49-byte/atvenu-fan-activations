@@ -44,7 +44,7 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
         <a href="${passUrl}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:14px 22px;border-radius:999px;font-weight:bold">Add to Apple or Google Wallet</a>
       </p>
       <p style="margin:0 0 8px;font-weight:bold">How to redeem</p>
-      <p style="margin:0 0 20px;color:#444">${esc(redemptionInstructions(a))}</p>
+      <p style="margin:0 0 20px;color:#444">${esc(redemptionInstructions(a, pass))}</p>
       ${dates ? `<p style="margin:0 0 8px;font-weight:bold">Tour dates</p><table role="presentation" style="font-size:14px;margin-bottom:20px">${dates}</table>` : ""}
       ${a.offer_terms ? `<p style="font-size:12px;color:#888;margin:0">${esc(a.offer_terms)}</p>` : ""}
     </td></tr>

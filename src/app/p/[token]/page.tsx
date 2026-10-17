@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getActivation, listShows } from "@/lib/activations";
+import { getActivation } from "@/lib/activations";
 import { brandStyle } from "@/lib/brand";
 import { passBadge } from "@/lib/discount";
-import { getPassByToken } from "@/lib/fans";
+import { getPassByToken, passExpired, passShows } from "@/lib/fans";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
 import { googleWalletEnabled } from "@/lib/wallet/google";
 import { formatShowDate, nextShow, redemptionInstructions } from "@/lib/wallet/content";
@@ -17,18 +17,24 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
   if (!pass) notFound();
   const a = getActivation(pass.activation_id)!;
 
-  if (pass.revoked_at) {
+  if (pass.revoked_at || passExpired(pass)) {
+    const expired = !pass.revoked_at;
     return (
       <main style={brandStyle(a)} className="grid min-h-screen flex-1 place-items-center bg-zinc-950 px-5 text-center text-white">
         <div>
-          <p className="text-2xl font-bold">This pass is no longer valid</p>
-          <p className="mt-2 text-sm opacity-70">It was revoked by the {a.artist_name} merch team. Contact them if you think this is a mistake.</p>
+          <p className="text-2xl font-bold">{expired ? "This pass has expired" : "This pass is no longer valid"}</p>
+          <p className="mt-2 text-sm opacity-70">
+            {expired
+              ? `It covered ${pass.link_city ?? "a set of dates"} on the ${a.tour_name}. Thanks for your work on the tour!`
+              : `It was revoked by the ${a.artist_name} merch team. Contact them if you think this is a mistake.`}
+          </p>
         </div>
       </main>
     );
   }
 
-  const shows = listShows(a.id);
+  const shows = passShows(a, pass);
+  const cityOnly = pass.pass_scope === "city" && pass.link_city;
   const upcoming = nextShow(shows);
   const apple = appleWalletEnabled();
   const google = googleWalletEnabled();
@@ -76,8 +82,11 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
               {holderDetail && <p className="text-xs opacity-70">{holderDetail}</p>}
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-accent">Next show</p>
-              <p>{upcoming ? `${upcoming.city} · ${formatShowDate(upcoming.show_date)}` : "—"}</p>
+              <p className="text-[10px] uppercase tracking-widest text-accent">{cityOnly ? "Valid in" : "Next show"}</p>
+              <p>{cityOnly ? pass.link_city : upcoming ? `${upcoming.city} · ${formatShowDate(upcoming.show_date)}` : "—"}</p>
+              {cityOnly && shows.length > 0 && (
+                <p className="text-xs opacity-70">{shows.map((s) => formatShowDate(s.show_date).replace(/ \d{4}$/, "")).join(", ")}</p>
+              )}
             </div>
           </div>
           <div className="flex flex-col items-center pb-6">
@@ -111,7 +120,7 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
 
         <div className="mt-8 space-y-2 text-sm opacity-70">
           <p className="font-semibold uppercase tracking-widest opacity-80">How to redeem</p>
-          <p>{redemptionInstructions(a)}</p>
+          <p>{redemptionInstructions(a, pass)}</p>
           {a.offer_terms && <p className="text-xs opacity-70">{a.offer_terms}</p>}
         </div>
       </div>

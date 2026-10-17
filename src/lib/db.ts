@@ -115,6 +115,44 @@ CREATE TABLE IF NOT EXISTS redemptions (
 );
 CREATE INDEX IF NOT EXISTS redemptions_code ON redemptions(activation_id, code);
 
+CREATE TABLE IF NOT EXISTS tours (
+  id TEXT PRIMARY KEY,
+  artist_name TEXT NOT NULL,
+  name TEXT NOT NULL,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE IF NOT EXISTS tour_dates (
+  id TEXT PRIMARY KEY,
+  tour_id TEXT NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+  show_date TEXT NOT NULL,
+  venue TEXT NOT NULL,
+  city TEXT NOT NULL,
+  country TEXT NOT NULL,
+  latitude REAL,
+  longitude REAL
+);
+CREATE INDEX IF NOT EXISTS tour_dates_tour ON tour_dates(tour_id, show_date);
+
+-- PIN-protected self sign-up URLs (one per city) for crew / comp activations.
+-- The PIN is a shared access code circulated with the link, so it is stored readable for admins.
+CREATE TABLE IF NOT EXISTS signup_links (
+  id TEXT PRIMARY KEY,
+  activation_id TEXT NOT NULL REFERENCES activations(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  city TEXT NOT NULL,
+  country TEXT NOT NULL,
+  label TEXT,
+  pin TEXT NOT NULL,
+  pin_version INTEGER NOT NULL DEFAULT 1,
+  pass_scope TEXT NOT NULL DEFAULT 'city' CHECK (pass_scope IN ('city','tour')),
+  expires_at TEXT,
+  max_signups INTEGER,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS emails (
   id TEXT PRIMARY KEY,
   opt_in_id TEXT REFERENCES opt_ins(id) ON DELETE CASCADE,
@@ -143,6 +181,12 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ["opt_ins", "issued_by_admin", "INTEGER NOT NULL DEFAULT 0"],
   ["opt_ins", "revoked_at", "TEXT"],
   ["redemptions", "discount_amount", "REAL"],
+  // When set, the activation's dates come from the tour rather than its own shows.
+  ["activations", "tour_id", "TEXT REFERENCES tours(id) ON DELETE SET NULL"],
+  ["opt_ins", "signup_link_id", "TEXT REFERENCES signup_links(id) ON DELETE SET NULL"],
+  // Per-pass validity, e.g. local crew whose pass only covers their city's dates.
+  ["opt_ins", "valid_from", "TEXT"],
+  ["opt_ins", "valid_until", "TEXT"],
 ];
 
 function migrate(conn: DatabaseSync) {
