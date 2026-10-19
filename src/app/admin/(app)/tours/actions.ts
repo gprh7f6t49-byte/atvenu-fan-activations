@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth";
+import { isPlatformAdmin, requireTour, requireUser } from "@/lib/auth";
+import { getOrganisation } from "@/lib/orgs";
 import { addTourDates, createTour, deleteTourDate, parseDateLines, updateTour } from "@/lib/tours";
 import type { FormState } from "../actions";
 
@@ -14,7 +15,9 @@ const tourSchema = z.object({
 });
 
 export async function createTourAction(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  const user = await requireUser();
+  const orgId = isPlatformAdmin(user) ? String(form.get("organisation_id") ?? "") : user.organisation_id;
+  if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this tour is for" };
   const parsed = tourSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   let dates;
@@ -23,13 +26,13 @@ export async function createTourAction(_prev: FormState, form: FormData): Promis
   } catch (err) {
     return { error: (err as Error).message };
   }
-  const id = createTour(parsed.data);
+  const id = createTour(parsed.data, orgId);
   if (dates.length) addTourDates(id, dates);
   redirect(`/admin/tours/${id}`);
 }
 
 export async function updateTourAction(id: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireTour(id);
   const parsed = tourSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   updateTour(id, parsed.data);
@@ -47,7 +50,7 @@ const dateSchema = z.object({
 });
 
 export async function addTourDateAction(tourId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireTour(tourId);
   const parsed = dateSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   addTourDates(tourId, [parsed.data]);
@@ -56,7 +59,7 @@ export async function addTourDateAction(tourId: string, _prev: FormState, form: 
 }
 
 export async function pasteTourDatesAction(tourId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireTour(tourId);
   try {
     const n = addTourDates(tourId, parseDateLines(String(form.get("dates") ?? "")));
     revalidatePath("/admin", "layout");
@@ -67,7 +70,7 @@ export async function pasteTourDatesAction(tourId: string, _prev: FormState, for
 }
 
 export async function deleteTourDateAction(tourId: string, dateId: string) {
-  await requireAdmin();
+  await requireTour(tourId);
   deleteTourDate(tourId, dateId);
   revalidatePath("/admin", "layout");
 }

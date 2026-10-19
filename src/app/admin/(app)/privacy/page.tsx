@@ -9,7 +9,8 @@ export default function PrivacyPage() {
       <div>
         <h1 className="text-2xl font-bold">Data requests</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Handle UK GDPR / EU GDPR subject requests. Each request applies to a fan across all activations.
+          Handle UK GDPR / EU GDPR subject requests for fans and crew. Requests cover the data held in your
+          organisation&apos;s activations (atVenu admins: every client).
         </p>
       </div>
 

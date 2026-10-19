@@ -1,7 +1,7 @@
+import { requireActivation } from "@/lib/auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
-import { getActivation } from "@/lib/activations";
 import { formatDiscount } from "@/lib/discount";
 import { fmtDateTime } from "@/lib/format";
 import { linkCity, linkState, listSignupLinks, signupUrl, type LinkState } from "@/lib/signup-links";
@@ -21,7 +21,7 @@ const shortDate = (d: string) => formatShowDate(d).replace(/ \d{4}$/, "");
 
 export default async function SignupLinksPage({ params }: PageProps<"/admin/activations/[id]/links">) {
   const { id } = await params;
-  const a = getActivation(id)!;
+  const { activation: a } = await requireActivation(id);
   if (a.kind === "fan") redirect(`/admin/activations/${id}`);
   const tour = a.tour_id ? getTour(a.tour_id) : undefined;
 

@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { isPlatformAdmin, orgScope, requireUser } from "@/lib/auth";
 import { listTours } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
 
 export const metadata = { title: "Tours · Fan Activations" };
 
-export default function ToursPage() {
-  const tours = listTours();
+export default async function ToursPage() {
+  const user = await requireUser();
+  const platform = isPlatformAdmin(user);
+  const tours = listTours(orgScope(user));
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
@@ -22,6 +25,7 @@ export default function ToursPage() {
             <thead className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-5 py-3">Tour</th>
+                {platform && <th className="px-3 py-3">Client</th>}
                 <th className="px-3 py-3">Dates</th>
                 <th className="px-3 py-3 text-right">Shows</th>
                 <th className="px-3 py-3 text-right">Cities</th>
@@ -35,6 +39,7 @@ export default function ToursPage() {
                     <Link href={`/admin/tours/${t.id}`} className="font-semibold hover:underline">{t.artist_name}</Link>
                     <div className="text-xs text-zinc-500">{t.name}</div>
                   </td>
+                  {platform && <td className="px-3 py-3 text-xs text-zinc-600">{t.organisation_name ?? "—"}</td>}
                   <td className="px-3 py-3 text-xs text-zinc-600">
                     {t.first_date ? `${formatShowDate(t.first_date)} – ${formatShowDate(t.last_date!)}` : "—"}
                   </td>

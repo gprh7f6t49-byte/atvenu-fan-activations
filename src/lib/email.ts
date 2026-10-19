@@ -119,7 +119,38 @@ export function listEmails(activationId: string, limit = 50): EmailRow[] {
     .all(activationId, limit) as unknown as EmailRow[];
 }
 
-export function getEmailHtml(id: string): string | undefined {
-  const row = db().prepare("SELECT html FROM emails WHERE id = ?").get(id) as { html: string } | undefined;
-  return row?.html;
+export function getEmail(id: string): { html: string; organisation_id: string | null } | undefined {
+  return db()
+    .prepare(
+      `SELECT e.html, a.organisation_id FROM emails e
+       LEFT JOIN opt_ins o ON o.id = e.opt_in_id LEFT JOIN activations a ON a.id = o.activation_id
+       WHERE e.id = ?`,
+    )
+    .get(id) as { html: string; organisation_id: string | null } | undefined;
+}
+
+/** Account emails (invites, password resets). Saved as "logged" when SMTP isn't configured. */
+export async function sendSystemEmail(to: string, subject: string, bodyHtml: string): Promise<void> {
+  const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:520px;margin:24px auto;padding:0 16px">
+    <p style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#888">${esc(config.orgName)} Fan Activations</p>${bodyHtml}</body></html>`;
+  let status: "sent" | "logged" | "failed" = "logged";
+  let error: string | null = null;
+  if (config.smtp) {
+    try {
+      await nodemailer
+        .createTransport({
+          host: config.smtp.host,
+          port: config.smtp.port,
+          secure: config.smtp.port === 465,
+          auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined,
+        })
+        .sendMail({ from: config.emailFrom, to, subject, html });
+      status = "sent";
+    } catch (err) {
+      status = "failed";
+      error = err instanceof Error ? err.message : String(err);
+    }
+  }
+  db().prepare("INSERT INTO emails (id, opt_in_id, to_email, subject, html, status, error) VALUES (?,?,?,?,?,?,?)")
+    .run(newId(), null, to, subject, html, status, error);
 }

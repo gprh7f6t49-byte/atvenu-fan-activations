@@ -1,9 +1,11 @@
+import { requireActivation } from "@/lib/auth";
 import { listEmails } from "@/lib/email";
 import { config } from "@/lib/config";
 import { fmtDateTime } from "@/lib/format";
 
 export default async function EmailsPage({ params }: PageProps<"/admin/activations/[id]/emails">) {
   const { id } = await params;
+  await requireActivation(id);
   const emails = listEmails(id);
   return (
     <div className="space-y-4">

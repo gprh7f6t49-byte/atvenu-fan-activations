@@ -1,11 +1,9 @@
-import { getActivation } from "@/lib/activations";
-import { isAdmin } from "@/lib/auth";
+import { activationForApi } from "@/lib/auth";
 import { toCsv } from "@/lib/csv";
 import { listFans } from "@/lib/fans";
 
 export async function GET(_req: Request, ctx: RouteContext<"/api/admin/activations/[id]/fans">) {
-  if (!(await isAdmin())) return new Response("Unauthorized", { status: 401 });
-  const a = getActivation((await ctx.params).id);
+  const a = await activationForApi((await ctx.params).id);
   if (!a) return new Response("Not found", { status: 404 });
   const fan = a.kind === "fan";
   const rows = listFans(a.id).map((f) => ({

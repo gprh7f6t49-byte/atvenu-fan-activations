@@ -1,6 +1,6 @@
+import { requireActivation } from "@/lib/auth";
 import Link from "next/link";
 import {
-  getActivation,
   getActivationStats,
   getDailySeries,
   getRecipientBreakdown,
@@ -18,7 +18,7 @@ function Money({ rows }: { rows: { currency: string | null; total: number }[] })
 
 export default async function ResultsPage({ params }: PageProps<"/admin/activations/[id]">) {
   const { id } = await params;
-  const a = getActivation(id)!;
+  const { activation: a } = await requireActivation(id);
   const s = getActivationStats(id);
   const venues = getRedemptionsByVenue(id);
   const walletAdds = s.apple_passes + s.google_passes;

@@ -1,5 +1,5 @@
+import { requireActivation } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { getActivation } from "@/lib/activations";
 import { listFans } from "@/lib/fans";
 import { fmtDateTime, fmtRevenue } from "@/lib/format";
 
@@ -8,7 +8,7 @@ const Tick = ({ on }: { on: number | string | null }) =>
 
 export default async function FansPage({ params, searchParams }: PageProps<"/admin/activations/[id]/fans">) {
   const { id } = await params;
-  if (getActivation(id)?.kind !== "fan") redirect(`/admin/activations/${id}/recipients`);
+  if ((await requireActivation(id)).activation.kind !== "fan") redirect(`/admin/activations/${id}/recipients`);
   const q = typeof (await searchParams).q === "string" ? ((await searchParams).q as string) : "";
   const fans = listFans(id, q || undefined);
 

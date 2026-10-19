@@ -3,7 +3,9 @@ import { ActionForm } from "@/components/action-form";
 import { ActivationFields } from "@/components/activation-fields";
 import type { ActivationKind } from "@/lib/activations";
 import { KIND_LABELS } from "@/lib/discount";
-import { getTour, listTours } from "@/lib/tours";
+import { isPlatformAdmin, orgScope, requireTour, requireUser } from "@/lib/auth";
+import { listOrganisations } from "@/lib/orgs";
+import { listTours } from "@/lib/tours";
 import { createActivationAction } from "../../actions";
 
 export const metadata = { title: "New activation · Fan Activations" };
@@ -11,9 +13,10 @@ export const metadata = { title: "New activation · Fan Activations" };
 const KINDS: ActivationKind[] = ["fan", "crew", "comp"];
 
 export default async function NewActivationPage({ searchParams }: PageProps<"/admin/activations/new">) {
+  const user = await requireUser();
   const sp = await searchParams;
   const kind = KINDS.find((k) => k === sp.kind);
-  const tour = typeof sp.tour === "string" ? getTour(sp.tour) : undefined;
+  const tour = typeof sp.tour === "string" ? (await requireTour(sp.tour)).tour : undefined;
   const tourQuery = tour ? `&tour=${tour.id}` : "";
 
   if (!kind) {
@@ -41,7 +44,12 @@ export default async function NewActivationPage({ searchParams }: PageProps<"/ad
       <p className="mb-6 text-sm text-zinc-600">{KIND_LABELS[kind].blurb}</p>
       <div className="card">
         <ActionForm action={createActivationAction} submitLabel="Create activation" className="space-y-8">
-          <ActivationFields kind={kind} tours={listTours()} tour={tour} />
+          <ActivationFields
+            kind={kind}
+            tours={listTours(tour ? tour.organisation_id : orgScope(user))}
+            tour={tour}
+            organisations={isPlatformAdmin(user) ? listOrganisations() : undefined}
+          />
         </ActionForm>
       </div>
     </>

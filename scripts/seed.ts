@@ -11,7 +11,9 @@ import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { createActivation, getActivationBySlug, type Activation, type ActivationInput } from "../src/lib/activations";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv, toCsv } from "../src/lib/csv";
-import { db } from "../src/lib/db";
+import { db, DEFAULT_ORG_NAME } from "../src/lib/db";
+import { createOrganisation, getOrganisationByName } from "../src/lib/orgs";
+import { createUser, ensureBootstrapAdmin, getUserByEmail, hashPassword } from "../src/lib/users";
 import { importCodes, importRedemptions, optInFan } from "../src/lib/fans";
 import { createSignupLink, listSignupLinks, passWindow } from "../src/lib/signup-links";
 import { addTourDates, createTour, listTourCities, listTours } from "../src/lib/tours";
@@ -36,11 +38,14 @@ const SHOWS = [
   { show_date: "2027-07-14", venue: "Estadio Metropolitano", city: "Madrid", country: "ES", latitude: 40.4362, longitude: -3.5995 },
 ];
 
+// The demo belongs to a sample client account so the client view can be shown too.
+const ORG_ID = getOrganisationByName(DEFAULT_ORG_NAME)?.id ?? createOrganisation(DEFAULT_ORG_NAME, null);
+
 const TOUR_NAME = "Live '27 European Tour";
 const TOUR_ID =
-  listTours().find((t) => t.artist_name === "Oasis" && t.name === TOUR_NAME)?.id ??
+  listTours(ORG_ID).find((t) => t.artist_name === "Oasis" && t.name === TOUR_NAME)?.id ??
   (() => {
-    const id = createTour({ artist_name: "Oasis", name: TOUR_NAME, notes: "Sample tour for the pilot — dates are illustrative." });
+    const id = createTour({ artist_name: "Oasis", name: TOUR_NAME, notes: "Sample tour for the pilot — dates are illustrative." }, ORG_ID);
     addTourDates(id, SHOWS);
     console.log(`Created tour "${TOUR_NAME}" with ${SHOWS.length} dates.`);
     return id;
@@ -59,7 +64,7 @@ function ensureActivation(input: ActivationInput): Activation {
     console.log(`Activation "${input.slug}" already exists — skipping create.`);
     return existing;
   }
-  createActivation(input);
+  createActivation(input, ORG_ID);
   console.log(`Created ${input.kind} activation "${input.slug}".`);
   return getActivationBySlug(input.slug)!;
 }
@@ -68,7 +73,8 @@ let activation = getActivationBySlug(SLUG);
 if (activation) {
   console.log(`Activation "${SLUG}" already exists — skipping create.`);
 } else {
-  const id = createActivation({
+  const id = createActivation(
+    {
     slug: SLUG,
     artist_name: "Oasis",
     tour_name: "Live '27 European Tour",
@@ -92,7 +98,9 @@ if (activation) {
     discount_value: 15,
     discount_currency: null,
     single_use: 1,
-  });
+  },
+    ORG_ID,
+  );
   activation = getActivationBySlug(SLUG)!;
   console.log(`Created activation "${SLUG}" (${id}).`);
 }
@@ -313,3 +321,15 @@ if (demo) {
 }
 
 console.log(`\nFan landing page: /a/${SLUG} · Admin: /admin`);
+
+// ---- Accounts --------------------------------------------------------------
+// atVenu admin from ADMIN_EMAIL / ADMIN_PASSWORD; optional demo client login to show the client view.
+void (async () => {
+  await ensureBootstrapAdmin();
+  const demoEmail = process.env.DEMO_CLIENT_EMAIL;
+  const demoPassword = process.env.DEMO_CLIENT_PASSWORD;
+  if (demoEmail && demoPassword && !getUserByEmail(demoEmail)) {
+    createUser({ email: demoEmail, name: "Demo client", role: "org_admin", organisationId: ORG_ID, passwordHash: await hashPassword(demoPassword) });
+    console.log(`Created demo client login ${demoEmail} (${DEFAULT_ORG_NAME}).`);
+  }
+})();

@@ -17,7 +17,8 @@ The app stores everything in one SQLite file, which must live on a volume or it 
 | Variable | Value |
 |---|---|
 | `DATABASE_PATH` | `/data/activations.db` |
-| `ADMIN_PASSWORD` | a strong password for the admin |
+| `ADMIN_EMAIL` | your email: the first atVenu admin login |
+| `ADMIN_PASSWORD` | a strong password for that login (only used to create the account; change it later under Account) |
 | `SESSION_SECRET` | a long random string (40+ characters) |
 | `SEED_DEMO` | `true` to load the Oasis demo data (remove later for real use) |
 | `PUBLIC_BASE_URL` | the app's web address from step 4, e.g. `https://atvenu-fan-activations.up.railway.app` |
@@ -26,7 +27,7 @@ The app stores everything in one SQLite file, which must live on a volume or it 
 **Settings → Networking → Generate Domain.** Copy it into `PUBLIC_BASE_URL` (step 3). Railway redeploys automatically.
 
 Then open:
-- `https://<your-domain>/admin` and sign in with `ADMIN_PASSWORD`
+- `https://<your-domain>/admin` and sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`
 - `https://<your-domain>/a/oasis-2027` for the fan landing page
 
 The city sign-up links and PINs are on each crew activation's **City sign-up links** tab.

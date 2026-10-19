@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getActivationBySlug, listShows } from "@/lib/activations";
 import { brandStyle } from "@/lib/brand";
-import { isAdmin } from "@/lib/auth";
+import { canAccessOrg, getCurrentUser } from "@/lib/auth";
 import { consentCopy } from "@/lib/consent";
 import { formatShowDate } from "@/lib/wallet/content";
 import { submitOptIn } from "./actions";
@@ -21,7 +21,8 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
   // Crew and comp passes are issued by the merch team; there is no public sign-up.
   if (!a || a.kind !== "fan") notFound();
 
-  const preview = a.status === "draft" && (await isAdmin());
+  const viewer = a.status === "draft" ? await getCurrentUser() : null;
+  const preview = Boolean(viewer && canAccessOrg(viewer, a.organisation_id));
   if (a.status === "draft" && !preview) notFound();
 
   const shows = listShows(a.id);

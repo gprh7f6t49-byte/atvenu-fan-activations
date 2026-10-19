@@ -6,16 +6,17 @@ import { z } from "zod";
 import {
   createActivation,
   generateSlug,
-  getActivation,
   getActivationBySlug,
   replaceShows,
   setActivationStatus,
   updateActivation,
+  type Activation,
   type ActivationInput,
   type ActivationStatus,
   type Show,
 } from "@/lib/activations";
-import { requireAdmin } from "@/lib/auth";
+import { isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
+import { getOrganisation } from "@/lib/orgs";
 import { getTour } from "@/lib/tours";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
 import { defaultHeadline } from "@/lib/discount";
@@ -23,6 +24,7 @@ import { sendPassEmail } from "@/lib/email";
 import {
   CodePoolExhaustedError,
   deleteFan,
+  deleteFanForOrg,
   getPassByToken,
   importCodes,
   importRedemptions,
@@ -34,6 +36,8 @@ import {
 export interface FormState {
   error?: string;
   ok?: string;
+  /** A link to show with a copy button (invites, password resets). */
+  link?: string;
 }
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a 6-digit hex colour like #0B0B0C");
@@ -112,25 +116,32 @@ function readActivationForm(form: FormData) {
 }
 
 export async function createActivationAction(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  const user = await requireUser();
+  // Clients always create in their own organisation; atVenu admins pick one.
+  const orgId = isPlatformAdmin(user) ? String(form.get("organisation_id") ?? "") : user.organisation_id;
+  if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this activation is for" };
   const read = readActivationForm(form);
   if ("error" in read) return { error: read.error };
+  if (read.data.tour_id && getTour(read.data.tour_id)?.organisation_id !== orgId) {
+    return { error: "That tour belongs to a different client" };
+  }
   if (!read.data.slug) read.data.slug = generateSlug(read.data.kind, read.data.artist_name, read.data.tour_name);
   if (getActivationBySlug(read.data.slug)) return { error: "That slug is already in use" };
-  const id = createActivation(read.data);
+  const id = createActivation(read.data, orgId);
   if (!read.data.tour_id) replaceShows(id, read.shows);
   redirect(`/admin/activations/${id}/imports?created=1`);
 }
 
 export async function updateActivationAction(id: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
-  const existing = getActivation(id);
-  if (!existing) return { error: "Activation not found" };
+  const { activation: existing } = await requireActivation(id);
   // The activation type is fixed at creation.
   form.set("kind", existing.kind);
   if (!form.get("slug")) form.set("slug", existing.slug);
   const read = readActivationForm(form);
   if ("error" in read) return { error: read.error };
+  if (read.data.tour_id && getTour(read.data.tour_id)?.organisation_id !== existing.organisation_id) {
+    return { error: "That tour belongs to a different client" };
+  }
   const clash = getActivationBySlug(read.data.slug);
   if (clash && clash.id !== id) return { error: "That slug is already in use" };
   updateActivation(id, read.data);
@@ -140,7 +151,7 @@ export async function updateActivationAction(id: string, _prev: FormState, form:
 }
 
 export async function setStatusAction(id: string, status: ActivationStatus) {
-  await requireAdmin();
+  await requireActivation(id);
   setActivationStatus(id, status);
   revalidatePath(`/admin/activations/${id}`, "layout");
 }
@@ -153,7 +164,7 @@ async function readUpload(form: FormData) {
 }
 
 export async function importCodesAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireActivation(activationId);
   try {
     const { text, name } = await readUpload(form);
     const { codes, column } = parseCodesCsv(text);
@@ -169,7 +180,7 @@ export async function importCodesAction(activationId: string, _prev: FormState, 
 }
 
 export async function importRedemptionsAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  await requireActivation(activationId);
   try {
     const { text, name } = await readUpload(form);
     const { rows, columns, skipped } = parseRedemptionsCsv(text);
@@ -186,11 +197,13 @@ export async function importRedemptionsAction(activationId: string, _prev: FormS
 }
 
 export async function deleteFanAction(_prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
+  const user = await requireUser();
   const email = String(form.get("email") ?? "").trim();
   if (!email) return { error: "Enter an email address" };
   if (form.get("confirm") !== email) return { error: "Type the email again in the confirmation box to delete" };
-  return deleteFan(email) ? { ok: `All personal data for ${email} has been deleted.` } : { error: "No fan found with that email" };
+  // A client can only erase what their own activations hold about this person.
+  const deleted = isPlatformAdmin(user) ? deleteFan(email) : deleteFanForOrg(email, user.organisation_id!);
+  return deleted ? { ok: `Personal data for ${email} has been deleted.` } : { error: "No one found with that email" };
 }
 
 const recipientSchema = z.object({
@@ -205,8 +218,7 @@ const recipientSchema = z.object({
 type RecipientInput = z.infer<typeof recipientSchema>;
 
 /** Issues one crew / comp pass. Returns null if the person already had one. */
-async function issueOne(activationId: string, r: RecipientInput, sendEmail: boolean) {
-  const activation = getActivation(activationId)!;
+async function issueOne(activation: Activation, r: RecipientInput, sendEmail: boolean) {
   const result = optInFan(activation, {
     email: r.email,
     firstName: r.firstName,
@@ -229,13 +241,12 @@ async function issueOne(activationId: string, r: RecipientInput, sendEmail: bool
 }
 
 export async function issueRecipientAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
-  const activation = getActivation(activationId);
-  if (!activation || activation.kind === "fan") return { error: "Passes can only be issued for crew or comp activations" };
+  const { activation } = await requireActivation(activationId);
+  if (activation.kind === "fan") return { error: "Passes can only be issued for crew or comp activations" };
   const parsed = recipientSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
-    const result = await issueOne(activationId, parsed.data, form.get("send_email") === "on");
+    const result = await issueOne(activation, parsed.data, form.get("send_email") === "on");
     revalidatePath(`/admin/activations/${activationId}`, "layout");
     return result
       ? { ok: `Pass issued to ${parsed.data.firstName} with code ${result.code}.` }
@@ -247,9 +258,8 @@ export async function issueRecipientAction(activationId: string, _prev: FormStat
 }
 
 export async function bulkIssueAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
-  const activation = getActivation(activationId);
-  if (!activation || activation.kind === "fan") return { error: "Passes can only be issued for crew or comp activations" };
+  const { activation } = await requireActivation(activationId);
+  if (activation.kind === "fan") return { error: "Passes can only be issued for crew or comp activations" };
   try {
     const { text } = await readUpload(form);
     const rows = parseRecipientsCsv(text);
@@ -263,7 +273,7 @@ export async function bulkIssueAction(activationId: string, _prev: FormState, fo
         invalid.push(i + 2); // +2 = header row + 1-based
         continue;
       }
-      const result = await issueOne(activationId, parsed.data, sendEmail);
+      const result = await issueOne(activation, parsed.data, sendEmail);
       if (result) issued++;
       else existing++;
     }
@@ -285,15 +295,14 @@ export async function bulkIssueAction(activationId: string, _prev: FormState, fo
 }
 
 export async function setRevokedAction(activationId: string, optInId: string, revoked: boolean) {
-  await requireAdmin();
-  setRevoked(optInId, revoked);
+  await requireActivation(activationId);
+  setRevoked(optInId, revoked, activationId);
   revalidatePath(`/admin/activations/${activationId}`, "layout");
 }
 
 export async function resendPassEmailAction(activationId: string, passToken: string) {
-  await requireAdmin();
-  const activation = getActivation(activationId);
+  const { activation } = await requireActivation(activationId);
   const pass = getPassByToken(passToken);
-  if (activation && pass && !pass.revoked_at) await sendPassEmail(activation, passShows(activation, pass), pass);
+  if (pass && pass.activation_id === activation.id && !pass.revoked_at) await sendPassEmail(activation, passShows(activation, pass), pass);
   revalidatePath(`/admin/activations/${activationId}`, "layout");
 }

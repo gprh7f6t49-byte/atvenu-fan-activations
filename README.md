@@ -15,6 +15,17 @@ Each activation has its own pool of atVenu codes and a **discount** set as a per
 (GBP / EUR / USD), with codes set to one order each or reusable. Set the same discount on the codes in atVenu.
 atVenu applies it at the till; this app shows it on the pass and estimates discount value in reports.
 
+**Client accounts**: atVenu admins create a client (e.g. a merch company) under **Clients** and invite its first
+user. Each client signs in with their own email and password and only ever sees their own tours, activations, fans,
+crew and reports. Client admins invite teammates under **Team**. Invites and password resets are one-time links,
+emailed when SMTP is set up and always shown to the inviter to copy.
+
+| Role | Can |
+|---|---|
+| atVenu admin | See and manage every client, create clients, invite atVenu admins |
+| Client admin | Manage their organisation's tours and activations, invite and manage teammates |
+| Client member | Manage their organisation's tours and activations |
+
 **Tours** hold the dates and cities (a city can have several dates). Activations attached to a tour use its dates
 automatically, and crew / comp activations can then get **PIN-protected city sign-up links**.
 
@@ -116,7 +127,7 @@ scripts/seed.ts        Oasis example data
 
 ## Pilot limitations (next steps)
 
-- One shared admin password → per-user logins / SSO.
+- Email + password accounts → add SSO / two-factor for larger clients.
 - Rate limits are in-memory (one server) → Redis or edge rate limiting when scaling out.
 - SQLite → Postgres when running more than one server.
 - CSV import → atVenu API sync (codes created and redemptions pulled automatically).

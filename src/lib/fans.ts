@@ -305,7 +305,7 @@ export function listFans(activationId: string, search?: string): FanRow[] {
 }
 
 /** Everything held about one fan — used for GDPR subject access requests. */
-export function exportFanData(email: string) {
+export function exportFanData(email: string, organisationId: string | null = null) {
   const conn = db();
   const fan = conn.prepare("SELECT * FROM fans WHERE email = ?").get(email.trim().toLowerCase()) as
     | Record<string, unknown>
@@ -318,20 +318,43 @@ export function exportFanData(email: string) {
               o.consent_atvenu, o.consent_snapshot, o.source, o.ip, o.user_agent, o.apple_pass_at, o.google_pass_at,
               o.email_sent_at
        FROM opt_ins o JOIN activations a ON a.id = o.activation_id JOIN promo_codes c ON c.id = o.promo_code_id
-       WHERE o.fan_id = ?`,
+       WHERE o.fan_id = ? AND (? IS NULL OR a.organisation_id = ?)`,
     )
-    .all(fan.id as string);
+    .all(fan.id as string, organisationId, organisationId);
+  if (organisationId && optIns.length === 0) return null;
   const purchases = conn
     .prepare(
       `SELECT r.code, r.order_ref, r.order_total, r.currency, r.item_count, r.redeemed_at, r.venue, r.city
-       FROM redemptions r JOIN opt_ins o ON o.promo_code_id = r.promo_code_id WHERE o.fan_id = ?`,
+       FROM redemptions r JOIN opt_ins o ON o.promo_code_id = r.promo_code_id
+       JOIN activations a ON a.id = o.activation_id
+       WHERE o.fan_id = ? AND (? IS NULL OR a.organisation_id = ?)`,
     )
-    .all(fan.id as string);
+    .all(fan.id as string, organisationId, organisationId);
   return { fan, opt_ins: optIns, purchases };
 }
 
 /**
- * GDPR erasure. Removes the fan, their opt-ins and emails. Their promo codes stay
+ * Erasure for one client: removes this person's opt-ins (and emails) in that organisation's
+ * activations. The person record itself is only deleted once no organisation holds an opt-in.
+ */
+export function deleteFanForOrg(email: string, organisationId: string): boolean {
+  return tx((conn) => {
+    const fan = conn.prepare("SELECT id FROM fans WHERE email = ?").get(email.trim().toLowerCase()) as { id: string } | undefined;
+    if (!fan) return false;
+    const removed = Number(
+      conn
+        .prepare("DELETE FROM opt_ins WHERE fan_id = ? AND activation_id IN (SELECT id FROM activations WHERE organisation_id = ?)")
+        .run(fan.id, organisationId).changes,
+    );
+    if (!removed) return false;
+    const remaining = conn.prepare("SELECT 1 FROM opt_ins WHERE fan_id = ? LIMIT 1").get(fan.id);
+    if (!remaining) conn.prepare("DELETE FROM fans WHERE id = ?").run(fan.id);
+    return true;
+  });
+}
+
+/**
+ * GDPR erasure (all organisations — atVenu admin only). Removes the fan, their opt-ins and emails. Their promo codes stay
  * "assigned" (never reissued — the code may still be in someone's wallet) and any
  * redemption rows remain as anonymous, unmatched sales.
  */
@@ -350,6 +373,8 @@ export function deleteFan(email: string): boolean {
  * Marks an admin-issued pass as revoked (or reinstates it). The pass page and wallet
  * downloads stop working; the code itself must also be disabled in atVenu.
  */
-export function setRevoked(optInId: string, revoked: boolean): void {
-  db().prepare("UPDATE opt_ins SET revoked_at = ? WHERE id = ?").run(revoked ? nowIso() : null, optInId);
+export function setRevoked(optInId: string, revoked: boolean, activationId: string): void {
+  db()
+    .prepare("UPDATE opt_ins SET revoked_at = ? WHERE id = ? AND activation_id = ?")
+    .run(revoked ? nowIso() : null, optInId, activationId);
 }

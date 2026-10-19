@@ -9,6 +9,39 @@ import { randomBytes, randomUUID } from "node:crypto";
 const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "activations.db");
 
 const SCHEMA = `
+-- A client account (e.g. a merch company). Tours and activations belong to one.
+CREATE TABLE IF NOT EXISTS organisations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  contact_email TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+-- platform_admin = atVenu staff (no organisation, sees everything);
+-- org_admin / org_member = a client's users, limited to their organisation.
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  name TEXT,
+  role TEXT NOT NULL CHECK (role IN ('platform_admin','org_admin','org_member')),
+  organisation_id TEXT REFERENCES organisations(id) ON DELETE CASCADE,
+  password_hash TEXT,
+  password_version INTEGER NOT NULL DEFAULT 1,
+  disabled INTEGER NOT NULL DEFAULT 0,
+  last_login_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+-- One-time links to set a password (invites and resets). Only a hash of the token is stored.
+CREATE TABLE IF NOT EXISTS password_tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose TEXT NOT NULL CHECK (purpose IN ('invite','reset')),
+  expires_at TEXT NOT NULL,
+  used_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
 CREATE TABLE IF NOT EXISTS activations (
   id TEXT PRIMARY KEY,
   slug TEXT NOT NULL UNIQUE,
@@ -187,12 +220,29 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   // Per-pass validity, e.g. local crew whose pass only covers their city's dates.
   ["opt_ins", "valid_from", "TEXT"],
   ["opt_ins", "valid_until", "TEXT"],
+  ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
+  ["activations", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
 ];
+
+export const DEFAULT_ORG_NAME = "atVenu Demo";
 
 function migrate(conn: DatabaseSync) {
   for (const [table, column, ddl] of ADDED_COLUMNS) {
     const cols = conn.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
     if (!cols.some((c) => c.name === column)) conn.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+  // Data from before client accounts existed moves into a default organisation.
+  const orphans = conn
+    .prepare("SELECT (SELECT COUNT(*) FROM tours WHERE organisation_id IS NULL) + (SELECT COUNT(*) FROM activations WHERE organisation_id IS NULL) AS n")
+    .get() as { n: number };
+  if (orphans.n > 0) {
+    let org = conn.prepare("SELECT id FROM organisations WHERE name = ?").get(DEFAULT_ORG_NAME) as { id: string } | undefined;
+    if (!org) {
+      org = { id: randomUUID() };
+      conn.prepare("INSERT INTO organisations (id, name) VALUES (?, ?)").run(org.id, DEFAULT_ORG_NAME);
+    }
+    conn.prepare("UPDATE tours SET organisation_id = ? WHERE organisation_id IS NULL").run(org.id);
+    conn.prepare("UPDATE activations SET organisation_id = ? WHERE organisation_id IS NULL").run(org.id);
   }
 }
 

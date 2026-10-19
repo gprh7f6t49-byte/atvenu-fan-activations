@@ -1,17 +1,18 @@
+import { requireActivation } from "@/lib/auth";
 import { ActionForm } from "@/components/action-form";
 import { ActivationFields } from "@/components/activation-fields";
-import { getActivation, listShows } from "@/lib/activations";
+import { listShows } from "@/lib/activations";
 import { getTour, listTours } from "@/lib/tours";
 import { updateActivationAction } from "../../../actions";
 
 export default async function SettingsPage({ params }: PageProps<"/admin/activations/[id]/settings">) {
   const { id } = await params;
-  const a = getActivation(id)!;
+  const { activation: a } = await requireActivation(id);
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
       <div className="card">
         <ActionForm action={updateActivationAction.bind(null, id)} submitLabel="Save changes" className="space-y-8">
-          <ActivationFields kind={a.kind} a={a} shows={listShows(id)} tours={listTours()} tour={a.tour_id ? getTour(a.tour_id) : undefined} />
+          <ActivationFields kind={a.kind} a={a} shows={listShows(id)} tours={listTours(a.organisation_id)} tour={a.tour_id ? getTour(a.tour_id) : undefined} />
         </ActionForm>
       </div>
       <aside className="space-y-3">

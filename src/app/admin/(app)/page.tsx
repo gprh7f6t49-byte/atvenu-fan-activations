@@ -2,12 +2,15 @@ import Link from "next/link";
 import { listActivations } from "@/lib/activations";
 import { KindBadge, StatusBadge } from "@/components/status-badge";
 import { formatDiscount } from "@/lib/discount";
+import { isPlatformAdmin, orgScope, requireUser } from "@/lib/auth";
 import { fmtInt, fmtPct, fmtRevenue } from "@/lib/format";
 
 export const metadata = { title: "Activations · Fan Activations" };
 
-export default function ActivationsPage() {
-  const activations = listActivations();
+export default async function ActivationsPage() {
+  const user = await requireUser();
+  const platform = isPlatformAdmin(user);
+  const activations = listActivations(orgScope(user));
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
@@ -24,6 +27,7 @@ export default function ActivationsPage() {
             <thead className="border-b border-zinc-200 text-left text-xs uppercase tracking-wide text-zinc-500">
               <tr>
                 <th className="px-5 py-3">Activation</th>
+                {platform && <th className="px-3 py-3">Client</th>}
                 <th className="px-3 py-3">Type</th>
                 <th className="px-3 py-3">Discount</th>
                 <th className="px-3 py-3">Status</th>
@@ -43,6 +47,7 @@ export default function ActivationsPage() {
                     </Link>
                     <div className="text-xs text-zinc-500">{a.tour_name}</div>
                   </td>
+                  {platform && <td className="px-3 py-3 text-xs text-zinc-600">{a.organisation_name ?? "—"}</td>}
                   <td className="px-3 py-3"><KindBadge kind={a.kind} /></td>
                   <td className="px-3 py-3 text-xs text-zinc-600">{formatDiscount(a) ?? "—"}</td>
                   <td className="px-3 py-3"><StatusBadge status={a.status} /></td>

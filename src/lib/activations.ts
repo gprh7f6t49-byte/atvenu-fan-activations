@@ -27,6 +27,7 @@ export interface Activation {
   discount_currency: string | null;
   single_use: number;
   tour_id: string | null;
+  organisation_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,7 +59,7 @@ export interface ActivationStats {
   revenue: { currency: string | null; total: number }[];
 }
 
-export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at">;
+export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at" | "organisation_id">;
 
 const KIND_SLUG_PREFIX: Record<ActivationKind, string> = { fan: "", crew: "crew-", comp: "comps-" };
 
@@ -85,8 +86,14 @@ const EDITABLE_FIELDS = [
   "tour_id",
 ] as const satisfies readonly (keyof ActivationInput)[];
 
-export function listActivations(): (Activation & ActivationStats)[] {
-  const rows = db().prepare("SELECT * FROM activations ORDER BY created_at DESC").all() as unknown as Activation[];
+/** All activations for one organisation, or every organisation when orgId is null (atVenu admin). */
+export function listActivations(orgId: string | null): (Activation & ActivationStats & { organisation_name: string | null })[] {
+  const rows = db()
+    .prepare(
+      `SELECT a.*, o.name AS organisation_name FROM activations a LEFT JOIN organisations o ON o.id = a.organisation_id
+       WHERE (? IS NULL OR a.organisation_id = ?) ORDER BY a.created_at DESC`,
+    )
+    .all(orgId, orgId) as unknown as (Activation & { organisation_name: string | null })[];
   return rows.map((a) => ({ ...a, ...getActivationStats(a.id) }));
 }
 
@@ -98,12 +105,12 @@ export function getActivationBySlug(slug: string): Activation | undefined {
   return db().prepare("SELECT * FROM activations WHERE slug = ?").get(slug) as unknown as Activation | undefined;
 }
 
-export function createActivation(input: ActivationInput): string {
+export function createActivation(input: ActivationInput, organisationId: string): string {
   const id = newId();
-  const cols = ["id", "kind", ...EDITABLE_FIELDS];
+  const cols = ["id", "kind", "organisation_id", ...EDITABLE_FIELDS];
   db()
     .prepare(`INSERT INTO activations (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-    .run(id, input.kind, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
+    .run(id, input.kind, organisationId, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
   return id;
 }
 

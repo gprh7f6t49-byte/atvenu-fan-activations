@@ -5,6 +5,7 @@ export interface Tour {
   artist_name: string;
   name: string;
   notes: string | null;
+  organisation_id: string | null;
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ export interface TourCity {
 }
 
 export interface TourSummary extends Tour {
+  organisation_name: string | null;
   date_count: number;
   city_count: number;
   first_date: string | null;
@@ -37,27 +39,30 @@ export interface TourSummary extends Tour {
   activation_count: number;
 }
 
-export function listTours(): TourSummary[] {
+/** Tours for one organisation, or every organisation when orgId is null (atVenu admin). */
+export function listTours(orgId: string | null): TourSummary[] {
   return db()
     .prepare(
-      `SELECT t.*,
+      `SELECT t.*, (SELECT name FROM organisations o WHERE o.id = t.organisation_id) AS organisation_name,
               (SELECT COUNT(*) FROM tour_dates d WHERE d.tour_id = t.id) AS date_count,
               (SELECT COUNT(DISTINCT d.city || '|' || d.country) FROM tour_dates d WHERE d.tour_id = t.id) AS city_count,
               (SELECT MIN(show_date) FROM tour_dates d WHERE d.tour_id = t.id) AS first_date,
               (SELECT MAX(show_date) FROM tour_dates d WHERE d.tour_id = t.id) AS last_date,
               (SELECT COUNT(*) FROM activations a WHERE a.tour_id = t.id) AS activation_count
-       FROM tours t ORDER BY t.created_at DESC`,
+       FROM tours t WHERE (? IS NULL OR t.organisation_id = ?) ORDER BY t.created_at DESC`,
     )
-    .all() as unknown as TourSummary[];
+    .all(orgId, orgId) as unknown as TourSummary[];
 }
 
 export function getTour(id: string): Tour | undefined {
   return db().prepare("SELECT * FROM tours WHERE id = ?").get(id) as unknown as Tour | undefined;
 }
 
-export function createTour(input: { artist_name: string; name: string; notes: string | null }): string {
+export function createTour(input: { artist_name: string; name: string; notes: string | null }, organisationId: string): string {
   const id = newId();
-  db().prepare("INSERT INTO tours (id, artist_name, name, notes) VALUES (?,?,?,?)").run(id, input.artist_name, input.name, input.notes);
+  db()
+    .prepare("INSERT INTO tours (id, artist_name, name, notes, organisation_id) VALUES (?,?,?,?,?)")
+    .run(id, input.artist_name, input.name, input.notes, organisationId);
   return id;
 }
 

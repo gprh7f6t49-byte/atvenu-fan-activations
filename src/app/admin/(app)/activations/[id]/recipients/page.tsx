@@ -1,6 +1,7 @@
+import { requireActivation } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
-import { getActivation, getActivationStats } from "@/lib/activations";
+import { getActivationStats } from "@/lib/activations";
 import { COMP_GROUPS, KIND_LABELS } from "@/lib/discount";
 import { listFans } from "@/lib/fans";
 import { fmtDateTime, fmtInt, fmtRevenue } from "@/lib/format";
@@ -11,7 +12,7 @@ const Tick = ({ on }: { on: unknown }) =>
 
 export default async function RecipientsPage({ params, searchParams }: PageProps<"/admin/activations/[id]/recipients">) {
   const { id } = await params;
-  const a = getActivation(id)!;
+  const { activation: a } = await requireActivation(id);
   if (a.kind === "fan") redirect(`/admin/activations/${id}/fans`);
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q : "";

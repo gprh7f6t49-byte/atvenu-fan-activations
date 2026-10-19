@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getActivation } from "@/lib/activations";
-import { requireAdmin } from "@/lib/auth";
+import { requireActivation } from "@/lib/auth";
 import { createSignupLink, deleteSignupLink, getSignupLink, regeneratePin, setLinkActive } from "@/lib/signup-links";
 import { listTourCities } from "@/lib/tours";
 import type { FormState } from "../../../actions";
@@ -17,9 +16,8 @@ const schema = z.object({
 });
 
 export async function createLinkAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireAdmin();
-  const a = getActivation(activationId);
-  if (!a || a.kind === "fan" || !a.tour_id) return { error: "Link this activation to a tour first" };
+  const { activation: a } = await requireActivation(activationId);
+  if (a.kind === "fan" || !a.tour_id) return { error: "Link this activation to a tour first" };
   const parsed = schema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const city = listTourCities(a.tour_id).find((c) => `${c.city}|${c.country}` === parsed.data.city);
@@ -38,7 +36,7 @@ export async function createLinkAction(activationId: string, _prev: FormState, f
 }
 
 async function forLink(activationId: string, linkId: string, fn: () => void) {
-  await requireAdmin();
+  await requireActivation(activationId);
   if (getSignupLink(linkId)?.activation_id !== activationId) return;
   fn();
   revalidatePath(`/admin/activations/${activationId}`, "layout");

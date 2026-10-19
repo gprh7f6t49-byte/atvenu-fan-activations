@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Activation, ActivationKind, Show } from "@/lib/activations";
+import type { Organisation } from "@/lib/orgs";
 import type { Tour } from "@/lib/tours";
 
 const showsToText = (shows: Show[]) =>
@@ -17,14 +18,27 @@ const DEFAULTS: Record<ActivationKind, { discount: number; singleUse: boolean; t
  * Shared fields for the create and edit activation forms. Fan-only fields are hidden for crew / comps.
  * When a tour is chosen, artist, tour name and dates come from the tour instead of being typed here.
  */
-export function ActivationFields({ kind, a, shows = [], tours = [], tour }: {
+export function ActivationFields({ kind, a, shows = [], tours = [], tour, organisations }: {
   kind: ActivationKind; a?: Activation; shows?: Show[]; tours?: Tour[]; tour?: Tour;
+  /** Only passed to atVenu admins creating an activation: choose the client. */
+  organisations?: Organisation[];
 }) {
   const fan = kind === "fan";
   const d = DEFAULTS[kind];
   return (
     <div className="space-y-8">
       <input type="hidden" name="kind" value={kind} />
+      {organisations && (tour ? (
+        <input type="hidden" name="organisation_id" value={tour.organisation_id ?? ""} />
+      ) : (
+        <label className="block max-w-md">
+          <span className="label">Client</span>
+          <select name="organisation_id" required defaultValue="" className="input">
+            <option value="" disabled>Choose a client…</option>
+            {organisations.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </label>
+      ))}
 
       <section className="grid gap-4 md:grid-cols-2">
         <h2 className="md:col-span-2 text-sm font-bold">Artist & tour</h2>
@@ -33,7 +47,11 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour }: {
             <span className="label">Tour</span>
             <select name="tour_id" defaultValue={tour?.id ?? ""} className="input">
               {!tour && <option value="">— Not linked to a tour (enter artist, tour and dates below)</option>}
-              {tours.map((t) => <option key={t.id} value={t.id}>{t.artist_name} — {t.name}</option>)}
+              {tours.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.artist_name} — {t.name}{organisations && "organisation_name" in t ? ` (${(t as Tour & { organisation_name: string | null }).organisation_name})` : ""}
+                </option>
+              ))}
             </select>
             {tour ? (
               <span className="mt-1 block text-xs text-zinc-500">

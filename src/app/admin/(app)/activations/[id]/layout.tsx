@@ -1,5 +1,4 @@
-import { notFound } from "next/navigation";
-import { getActivation } from "@/lib/activations";
+import { requireActivation } from "@/lib/auth";
 import { KindBadge, StatusBadge } from "@/components/status-badge";
 import { setStatusAction } from "../../actions";
 import { config } from "@/lib/config";
@@ -8,8 +7,7 @@ import { Tabs } from "./tabs";
 
 export default async function ActivationLayout({ children, params }: LayoutProps<"/admin/activations/[id]">) {
   const { id } = await params;
-  const a = getActivation(id);
-  if (!a) notFound();
+  const { activation: a } = await requireActivation(id);
   const landing = `${config.baseUrl}/a/${a.slug}`;
   const discount = formatDiscount(a);
 

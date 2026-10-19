@@ -1,3 +1,4 @@
+import { requireActivation } from "@/lib/auth";
 import { ActionForm } from "@/components/action-form";
 import { getActivationStats } from "@/lib/activations";
 import { listImports } from "@/lib/fans";
@@ -6,6 +7,7 @@ import { importCodesAction, importRedemptionsAction } from "../../../actions";
 
 export default async function ImportsPage({ params, searchParams }: PageProps<"/admin/activations/[id]/imports">) {
   const { id } = await params;
+  await requireActivation(id);
   const { created } = await searchParams;
   const stats = getActivationStats(id);
   const imports = listImports(id);

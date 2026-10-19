@@ -2,6 +2,7 @@
 
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import type { FormState } from "@/app/admin/(app)/actions";
+import { CopyLink } from "./copy-link";
 
 interface Props {
   action: (prev: FormState, form: FormData) => Promise<FormState>;
@@ -44,6 +45,7 @@ export function ActionForm({ action, submitLabel, pendingLabel, className, reset
         {state.ok && <p className="text-sm text-emerald-700">{state.ok}</p>}
         {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       </div>
+      {state.link && <CopyLink link={state.link} />}
     </form>
   );
 }

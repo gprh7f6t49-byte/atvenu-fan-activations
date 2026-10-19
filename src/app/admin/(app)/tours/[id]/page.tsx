@@ -1,17 +1,16 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { KindBadge, StatusBadge } from "@/components/status-badge";
 import { listActivationsForTour } from "@/lib/activations";
 import { KIND_LABELS } from "@/lib/discount";
-import { getTour, listTourCities } from "@/lib/tours";
+import { requireTour } from "@/lib/auth";
+import { listTourCities } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
 import { addTourDateAction, deleteTourDateAction, pasteTourDatesAction, updateTourAction } from "../actions";
 
 export default async function TourPage({ params }: PageProps<"/admin/tours/[id]">) {
   const { id } = await params;
-  const tour = getTour(id);
-  if (!tour) notFound();
+  const { tour } = await requireTour(id);
   const cities = listTourCities(id);
   const activations = listActivationsForTour(id);
   const dateCount = cities.reduce((n, c) => n + c.dates.length, 0);
