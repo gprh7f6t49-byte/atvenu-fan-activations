@@ -10,7 +10,7 @@ export function Tabs({ id, peopleLabel, peopleHref, signupLinks }: { id: string;
     { href: base, label: "Results" },
     { href: `${base}/${peopleHref}`, label: peopleLabel },
     ...(signupLinks ? [{ href: `${base}/links`, label: "City sign-up links" }] : []),
-    { href: `${base}/imports`, label: "Codes & sales imports" },
+    { href: `${base}/imports`, label: "Codes & sales" },
     { href: `${base}/emails`, label: "Email outbox" },
     { href: `${base}/settings`, label: "Settings" },
   ];

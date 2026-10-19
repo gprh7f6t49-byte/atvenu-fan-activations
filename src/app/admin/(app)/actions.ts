@@ -18,6 +18,7 @@ import {
 import { isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
 import { getOrganisation } from "@/lib/orgs";
 import { getTour } from "@/lib/tours";
+import { generateCodes, MAX_GENERATE, setBatchLoaded } from "@/lib/codes";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
 import { defaultHeadline } from "@/lib/discount";
 import { sendPassEmail } from "@/lib/email";
@@ -252,7 +253,7 @@ export async function issueRecipientAction(activationId: string, _prev: FormStat
       ? { ok: `Pass issued to ${parsed.data.firstName} with code ${result.code}.` }
       : { error: `${parsed.data.email} already has a pass for this activation.` };
   } catch (err) {
-    if (err instanceof CodePoolExhaustedError) return { error: "No codes left — import more atVenu codes first." };
+    if (err instanceof CodePoolExhaustedError) return { error: "No codes left — generate or import more codes first." };
     throw err;
   }
 }
@@ -288,7 +289,7 @@ export async function bulkIssueAction(activationId: string, _prev: FormState, fo
   } catch (err) {
     if (err instanceof CodePoolExhaustedError) {
       revalidatePath(`/admin/activations/${activationId}`, "layout");
-      return { error: "Ran out of codes part-way through — import more atVenu codes, then re-upload (people already issued are skipped)." };
+      return { error: "Ran out of codes part-way through — generate or import more codes, then re-upload (people already issued are skipped)." };
     }
     return { error: (err as Error).message };
   }
@@ -304,5 +305,30 @@ export async function resendPassEmailAction(activationId: string, passToken: str
   const { activation } = await requireActivation(activationId);
   const pass = getPassByToken(passToken);
   if (pass && pass.activation_id === activation.id && !pass.revoked_at) await sendPassEmail(activation, passShows(activation, pass), pass);
+  revalidatePath(`/admin/activations/${activationId}`, "layout");
+}
+
+const generateSchema = z.object({
+  quantity: z.coerce.number().int("Enter a whole number").min(1, "Generate at least 1 code").max(MAX_GENERATE, `Up to ${MAX_GENERATE.toLocaleString("en-GB")} codes at a time`),
+  prefix: z.string().trim().max(12).optional().transform((v) => v ?? ""),
+  length: z.coerce.number().int().min(5).max(12),
+});
+
+export async function generateCodesAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
+  await requireActivation(activationId);
+  const parsed = generateSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  try {
+    const { count, sample } = generateCodes(activationId, parsed.data);
+    revalidatePath(`/admin/activations/${activationId}`, "layout");
+    return { ok: `Generated ${count.toLocaleString("en-GB")} codes (e.g. ${sample.join(", ")}). Download them for atVenu below.` };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+export async function setBatchLoadedAction(activationId: string, batchId: string, loaded: boolean) {
+  await requireActivation(activationId);
+  setBatchLoaded(activationId, batchId, loaded);
   revalidatePath(`/admin/activations/${activationId}`, "layout");
 }

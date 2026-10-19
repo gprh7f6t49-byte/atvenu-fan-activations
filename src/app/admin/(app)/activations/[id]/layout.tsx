@@ -3,6 +3,7 @@ import { KindBadge, StatusBadge } from "@/components/status-badge";
 import { setStatusAction } from "../../actions";
 import { config } from "@/lib/config";
 import { formatDiscount, KIND_LABELS } from "@/lib/discount";
+import { AtvenuCodeWarning } from "@/components/atvenu-code-warning";
 import { Tabs } from "./tabs";
 
 export default async function ActivationLayout({ children, params }: LayoutProps<"/admin/activations/[id]">) {
@@ -43,6 +44,7 @@ export default async function ActivationLayout({ children, params }: LayoutProps
           )}
         </div>
       </div>
+      <AtvenuCodeWarning activationId={a.id} />
       <Tabs id={a.id} peopleLabel={KIND_LABELS[a.kind].people} peopleHref={a.kind === "fan" ? "fans" : "recipients"} signupLinks={a.kind !== "fan"} />
       <div className="mt-6">{children}</div>
     </>

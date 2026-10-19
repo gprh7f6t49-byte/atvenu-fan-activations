@@ -31,7 +31,7 @@ export default async function ResultsPage({ params }: PageProps<"/admin/activati
   if (s.codes_total === 0) {
     return (
       <div className="card text-sm text-zinc-600">
-        No promo codes loaded yet. <Link href={`/admin/activations/${id}/imports`} className="font-semibold underline">Import a CSV of atVenu codes</Link>{" "}
+        No promo codes loaded yet. <Link href={`/admin/activations/${id}/imports`} className="font-semibold underline">Generate or import promo codes</Link>{" "}
         {fan ? "before going live." : "before issuing passes."}
       </div>
     );

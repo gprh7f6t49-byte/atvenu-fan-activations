@@ -27,7 +27,7 @@ export default async function RecipientsPage({ params, searchParams }: PageProps
         <section className="card">
           <h2 className="font-semibold">Issue a pass</h2>
           <p className="mb-4 mt-1 text-sm text-zinc-600">
-            Assigns the next atVenu code ({fmtInt(stats.codes_available)} left) and creates a wallet pass for this {labels.person}.
+            Assigns the next promo code ({fmtInt(stats.codes_available)} left) and creates a wallet pass for this {labels.person}.
           </p>
           <ActionForm action={issueRecipientAction.bind(null, id)} submitLabel="Issue pass" pendingLabel="Issuing…" resetOnSuccess>
             <div className="grid gap-3 sm:grid-cols-2">

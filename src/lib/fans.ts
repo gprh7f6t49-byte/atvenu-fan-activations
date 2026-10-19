@@ -169,9 +169,10 @@ export function markPassEvent(optInId: string, kind: "apple" | "google" | "email
 export function importCodes(activationId: string, codes: string[], filename: string | null) {
   return tx((conn) => {
     const batchId = newId();
+    // Codes imported from atVenu already exist there, so they count as loaded.
     conn
-      .prepare("INSERT INTO import_batches (id, activation_id, kind, filename, rows_total) VALUES (?,?,?,?,?)")
-      .run(batchId, activationId, "codes", filename, codes.length);
+      .prepare("INSERT INTO import_batches (id, activation_id, kind, filename, rows_total, source, atvenu_loaded_at) VALUES (?,?,?,?,?,'import',?)")
+      .run(batchId, activationId, "codes", filename, codes.length, nowIso());
     const insert = conn.prepare(
       "INSERT OR IGNORE INTO promo_codes (id, activation_id, code, import_batch_id) VALUES (?,?,?,?)",
     );
@@ -235,6 +236,9 @@ export function importRedemptions(activationId: string, rows: RedemptionRow[], f
 export interface ImportBatch {
   id: string;
   kind: "codes" | "redemptions";
+  source: "import" | "generated";
+  exported_at: string | null;
+  atvenu_loaded_at: string | null;
   filename: string | null;
   rows_total: number;
   rows_imported: number;

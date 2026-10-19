@@ -35,7 +35,12 @@ Manchester and Dublin.
 ## How it works
 
 1. **Create an activation** in the admin: pick the type, then artist, tour, discount, brand colours, tour dates.
-2. **Import promo codes**: generate unique single-use codes in atVenu, export them as CSV, upload.
+2. **Get promo codes**, either way:
+   - **Generate them here** (quantity, prefix, length) and go live straight away. Then **Download for atVenu**
+     (CSV of codes with the activation's discount) and send it to atVenu to load. Each batch shows *Not sent yet*,
+     then *Sent · awaiting atVenu*, then *Loaded*. Until a batch is marked loaded, a warning reminds you that passes work
+     but the till won't accept those codes yet.
+   - **Import them**: export codes already created in atVenu as CSV and upload.
 3. **Share the landing page** (`/a/<slug>`). Add `?utm_source=instagram` etc. to track where fans came from.
 4. **The fan opts in** and gets the next unused code. Signing up again with the same email returns the same code.
    Marketing consents (artist / promoter / atVenu) are optional, unticked by default, and stored with the exact wording shown.

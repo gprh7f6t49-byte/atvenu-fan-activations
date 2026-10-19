@@ -222,6 +222,10 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ["opt_ins", "valid_until", "TEXT"],
   ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
   ["activations", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
+  // Code batches: 'import' (from atVenu) or 'generated' here, then sent to and loaded into atVenu.
+  ["import_batches", "source", "TEXT NOT NULL DEFAULT 'import'"],
+  ["import_batches", "exported_at", "TEXT"],
+  ["import_batches", "atvenu_loaded_at", "TEXT"],
 ];
 
 export const DEFAULT_ORG_NAME = "atVenu Demo";
