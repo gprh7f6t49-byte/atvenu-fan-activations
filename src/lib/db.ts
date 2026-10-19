@@ -220,6 +220,8 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   // Per-pass validity, e.g. local crew whose pass only covers their city's dates.
   ["opt_ins", "valid_from", "TEXT"],
   ["opt_ins", "valid_until", "TEXT"],
+  // Uploaded artwork for the wallet pass (falls back to the landing page image).
+  ["activations", "pass_image_url", "TEXT"],
   ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
   ["activations", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
   // Code batches: 'import' (from atVenu) or 'generated' here, then sent to and loaded into atVenu.

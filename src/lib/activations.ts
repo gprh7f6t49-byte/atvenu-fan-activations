@@ -18,6 +18,7 @@ export interface Activation {
   accent_color: string;
   text_color: string;
   hero_image_url: string | null;
+  pass_image_url: string | null;
   privacy_url: string | null;
   status: ActivationStatus;
   pass_expires_at: string | null;
@@ -76,6 +77,7 @@ const EDITABLE_FIELDS = [
   "accent_color",
   "text_color",
   "hero_image_url",
+  "pass_image_url",
   "privacy_url",
   "status",
   "pass_expires_at",

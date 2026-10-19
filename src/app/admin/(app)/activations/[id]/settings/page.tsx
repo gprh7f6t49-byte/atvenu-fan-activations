@@ -21,7 +21,7 @@ export default async function SettingsPage({ params }: PageProps<"/admin/activat
         <img src={`/api/activations/${id}/art/hero?v=${encodeURIComponent(a.updated_at)}`} alt="Google Wallet hero" className="w-full rounded-lg ring-1 ring-zinc-200" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={`/api/activations/${id}/art/strip?v=${encodeURIComponent(a.updated_at)}`} alt="Apple Wallet strip" className="w-full rounded-lg ring-1 ring-zinc-200" />
-        <p className="text-xs text-zinc-500">Generated from the brand colours. Save to refresh.</p>
+        <p className="text-xs text-zinc-500">Made from your pass image (or landing image), otherwise the brand colours. Save to refresh.</p>
       </aside>
     </div>
   );

@@ -58,7 +58,12 @@ If the atVenu export includes a discount column, that figure is used instead of 
 
 ### Crew self sign-up (city links)
 
-1. **Tours → New tour**: add the dates (one by one or paste a list). Dates in the same city are grouped together.
+1. **Tours → New tour**: add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the
+   tour page**: paste the artist's or promoter's tour page link (or copy the dates off the page and paste the text).
+   You'll see the dates it found in an editable table, with any already on the tour unticked, and add the ones you want.
+   It reads the schema.org event data most ticketing and artist sites publish, and falls back to the page text. Sites
+   that block automated reading or load dates with scripts need the copy-and-paste route. Only public web addresses
+   are fetched. Dates in the same city are grouped together.
 2. Create the crew activation from the tour page (**+ Crew sales**) and import its atVenu codes. Then **Go live**.
 3. **City sign-up links** tab: pick a city. You get a short URL (e.g. `/c/DEtEcCVS`) and a random 6-digit PIN.
    Options: pass valid for that city's dates only or the whole tour, when the link closes (default: the morning after
@@ -72,6 +77,14 @@ Security: a wrong PIN counts against the connection (10 per 15 minutes) and the 
 don't count, so crew sharing venue Wi-Fi aren't locked out. **New PIN** signs everyone out of the old one, and existing
 passes keep working. Signing up again with an email that already has a pass re-sends it by email rather than showing it,
 so nobody can pull up someone else's pass by typing their email. The fan landing page now works the same way.
+
+### Images
+
+In an activation's **Settings**, upload a **Landing page image** (fan activations) and a **Pass image** (JPG, PNG or
+WebP, up to 10 MB). Uploads are checked, resized to 2400px max and stripped of metadata. They're stored next to the
+database (`uploads/` on the Railway volume). The pass image is used for the Apple Wallet strip, the Google Wallet hero,
+the pass page and the email banner (the banner only appears on an https domain). Without a pass image, fan passes use
+the landing image, and otherwise the brand colours.
 
 GDPR access and erasure requests are under **Admin → Data requests**.
 

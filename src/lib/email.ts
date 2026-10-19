@@ -14,6 +14,11 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
   const passUrl = `${config.baseUrl}/p/${pass.pass_token}`;
   const name = pass.first_name ? `Hi ${esc(pass.first_name)},` : "Hi,";
   const badge = passBadge(a.kind, pass.recipient_group);
+  // Email clients need a public https image; on localhost the banner is left out.
+  const hasImage = Boolean(a.pass_image_url ?? (a.kind === "fan" ? a.hero_image_url : null));
+  const banner = hasImage && config.baseUrl.startsWith("https://")
+    ? `${config.baseUrl}/api/activations/${a.id}/art/hero?v=${encodeURIComponent(a.updated_at)}`
+    : null;
   const intro =
     a.kind === "fan"
       ? "You're in. Here's your personal code — add it to your phone's wallet so it's ready at the merch stand."
@@ -28,6 +33,7 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
   const html = `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#111">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0"><tr><td align="center">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#fff;border-radius:12px;overflow:hidden">
+    ${banner ? `<tr><td style="padding:0;line-height:0"><img src="${banner}" width="560" alt="" style="display:block;width:100%;height:auto"/></td></tr>` : ""}
     <tr><td style="background:${a.primary_color};color:${a.text_color};padding:32px 32px 28px">
       <div style="font-size:13px;letter-spacing:2px;color:${a.accent_color};text-transform:uppercase">${badge ? `${esc(badge)} · ` : ""}${esc(a.tour_name)}</div>
       <div style="font-size:34px;font-weight:900;margin-top:6px">${esc(a.artist_name)}</div>

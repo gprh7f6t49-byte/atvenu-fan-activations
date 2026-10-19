@@ -40,6 +40,7 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
   const google = googleWalletEnabled();
   const redeemed = Boolean(a.single_use) && pass.code_status === "redeemed";
   const badge = passBadge(a.kind, pass.recipient_group);
+  const bandImage = (a.pass_image_url ?? (a.kind === "fan" ? a.hero_image_url : null))?.replace(/["\\()]/g, encodeURIComponent);
   const holder = [pass.first_name, pass.last_name].filter(Boolean).join(" ") || pass.email;
   const holderDetail = [pass.role, pass.organisation].filter(Boolean).join(" · ");
   const emailed = pass.email_sent_at ? " We've emailed you a copy too." : "";
@@ -70,7 +71,11 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
           </div>
           <div
             className="mt-4 px-5 py-6"
-            style={{ background: `linear-gradient(135deg, ${a.primary_color}, ${a.accent_color}8c)` }}
+            style={{
+              background: bandImage
+                ? `linear-gradient(180deg, ${a.primary_color}55, ${a.primary_color}cc), center / cover no-repeat url("${bandImage}")`
+                : `linear-gradient(135deg, ${a.primary_color}, ${a.accent_color}8c)`,
+            }}
           >
             <p className="text-[10px] uppercase tracking-widest text-accent">{badge ? a.tour_name : a.artist_name}</p>
             <p className="text-3xl font-extrabold leading-tight">{a.offer_headline}</p>

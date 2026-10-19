@@ -1,5 +1,6 @@
 "use server";
 
+import { parseUkDate } from "@/lib/dates";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireActivation } from "@/lib/auth";
@@ -20,6 +21,8 @@ export async function createLinkAction(activationId: string, _prev: FormState, f
   if (a.kind === "fan" || !a.tour_id) return { error: "Link this activation to a tour first" };
   const parsed = schema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const closes = parsed.data.expires_at ? parseUkDate(parsed.data.expires_at) : null;
+  if (parsed.data.expires_at && !closes) return { error: "Enter the closing date as DD-MM-YYYY, e.g. 13-06-2027" };
   const city = listTourCities(a.tour_id).find((c) => `${c.city}|${c.country}` === parsed.data.city);
   if (!city) return { error: "That city isn't on the tour" };
   const link = createSignupLink({
@@ -28,7 +31,7 @@ export async function createLinkAction(activationId: string, _prev: FormState, f
     label: parsed.data.label,
     passScope: parsed.data.pass_scope,
     // A chosen expiry date runs to the end of that day (UTC).
-    expiresAt: parsed.data.expires_at ? new Date(`${parsed.data.expires_at}T23:59:59Z`).toISOString() : null,
+    expiresAt: closes ? `${closes}T23:59:59.000Z` : null,
     maxSignups: parsed.data.max_signups,
   });
   revalidatePath(`/admin/activations/${activationId}`, "layout");

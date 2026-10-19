@@ -29,8 +29,8 @@ export default async function NewTourPage() {
           <label className="block">
             <span className="label">Dates (optional — you can add them one by one next)</span>
             <textarea name="dates" rows={8} className="input font-mono text-xs"
-              placeholder={"2027-06-11 | Wembley Stadium | London | GB | 51.556 | -0.2796\n2027-06-12 | Wembley Stadium | London | GB"} />
-            <span className="mt-1 block text-xs text-zinc-500">One per line: date | venue | city | country code | latitude | longitude (coordinates optional).</span>
+              placeholder={"11-06-2027 | Wembley Stadium | London | GB | 51.556 | -0.2796\n12-06-2027 | Wembley Stadium | London | GB"} />
+            <span className="mt-1 block text-xs text-zinc-500">One per line: date (DD-MM-YYYY) | venue | city | country code | latitude | longitude (coordinates optional).</span>
           </label>
           <label className="block"><span className="label">Notes</span><textarea name="notes" rows={2} className="input" /></label>
         </ActionForm>

@@ -18,6 +18,8 @@ import {
 import { isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
 import { getOrganisation } from "@/lib/orgs";
 import { getTour } from "@/lib/tours";
+import { parseUkDate } from "@/lib/dates";
+import { imageFromForm } from "@/lib/uploads";
 import { generateCodes, MAX_GENERATE, setBatchLoaded } from "@/lib/codes";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
 import { defaultHeadline } from "@/lib/discount";
@@ -63,13 +65,12 @@ const activationSchema = z.object({
   primary_color: hex,
   accent_color: hex,
   text_color: hex,
-  hero_image_url: optional.pipe(z.string().url("Hero image must be a full URL").nullable()),
   privacy_url: optional.pipe(z.string().url("Privacy URL must be a full URL").nullable()),
   status: z.enum(["draft", "live", "ended"]),
   pass_expires_at: optional,
 });
 
-/** One show per line: date | venue | city | country | lat | lng (lat/lng optional). */
+/** One show per line: DD-MM-YYYY | venue | city | country | lat | lng (lat/lng optional). */
 function parseShows(text: string): Omit<Show, "id" | "activation_id">[] {
   return text
     .split("\n")
@@ -77,11 +78,12 @@ function parseShows(text: string): Omit<Show, "id" | "activation_id">[] {
     .filter(Boolean)
     .map((line, i) => {
       const [date, venue, city, country, lat, lng] = line.split("|").map((p) => p.trim());
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !venue || !city) {
-        throw new Error(`Show line ${i + 1} should look like "2027-06-12 | Wembley Stadium | London | GB"`);
+      const showDate = parseUkDate(date ?? "");
+      if (!showDate || !venue || !city) {
+        throw new Error(`Show line ${i + 1} should look like "12-06-2027 | Wembley Stadium | London | GB"`);
       }
       return {
-        show_date: date,
+        show_date: showDate,
         venue,
         city,
         country: country || "",
@@ -91,7 +93,8 @@ function parseShows(text: string): Omit<Show, "id" | "activation_id">[] {
     });
 }
 
-function readActivationForm(form: FormData) {
+/** Reads the activation form; `existing` keeps current images when no new file is chosen. */
+async function readActivationForm(form: FormData, existing?: Activation) {
   const parsed = activationSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message } as const;
   const d = parsed.data;
@@ -105,11 +108,19 @@ function readActivationForm(form: FormData) {
     d.tour_name = tour.name;
   }
   if (!d.artist_name || !d.tour_name) return { error: "Enter the artist and tour name, or pick a tour" } as const;
+  let passExpires: string | null = null;
+  if (d.pass_expires_at) {
+    const day = parseUkDate(d.pass_expires_at);
+    if (!day) return { error: "Enter the pass expiry as DD-MM-YYYY, e.g. 30-09-2027" } as const;
+    passExpires = `${day}T23:59:59.000Z`; // valid to the end of that day
+  }
   try {
     const shows = parseShows(String(form.get("shows") ?? ""));
-    const data = { ...d, offer_headline: d.offer_headline || defaultHeadline(d) } as ActivationInput;
+    const data = { ...d, offer_headline: d.offer_headline || defaultHeadline(d), pass_expires_at: passExpires } as ActivationInput;
     if (data.discount_type === "percent") data.discount_currency = null;
-    if (data.pass_expires_at) data.pass_expires_at = new Date(data.pass_expires_at).toISOString();
+    // Crew and comp activations have no landing page, so no landing image field.
+    data.hero_image_url = d.kind === "fan" ? await imageFromForm(form, "hero_image", existing?.hero_image_url ?? null) : (existing?.hero_image_url ?? null);
+    data.pass_image_url = await imageFromForm(form, "pass_image", existing?.pass_image_url ?? null);
     return { data, shows } as const;
   } catch (err) {
     return { error: (err as Error).message } as const;
@@ -121,7 +132,7 @@ export async function createActivationAction(_prev: FormState, form: FormData): 
   // Clients always create in their own organisation; atVenu admins pick one.
   const orgId = isPlatformAdmin(user) ? String(form.get("organisation_id") ?? "") : user.organisation_id;
   if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this activation is for" };
-  const read = readActivationForm(form);
+  const read = await readActivationForm(form);
   if ("error" in read) return { error: read.error };
   if (read.data.tour_id && getTour(read.data.tour_id)?.organisation_id !== orgId) {
     return { error: "That tour belongs to a different client" };
@@ -138,7 +149,7 @@ export async function updateActivationAction(id: string, _prev: FormState, form:
   // The activation type is fixed at creation.
   form.set("kind", existing.kind);
   if (!form.get("slug")) form.set("slug", existing.slug);
-  const read = readActivationForm(form);
+  const read = await readActivationForm(form, existing);
   if ("error" in read) return { error: read.error };
   if (read.data.tour_id && getTour(read.data.tour_id)?.organisation_id !== existing.organisation_id) {
     return { error: "That tour belongs to a different client" };

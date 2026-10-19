@@ -75,7 +75,7 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
             </label>
             <label className="block">
               <span className="label">Link closes</span>
-              <input type="date" name="expires_at" className="input" />
+              <input name="expires_at" className="input" placeholder="DD-MM-YYYY" inputMode="numeric" />
               <span className="mt-1 block text-xs text-zinc-500">Blank = day after last show</span>
             </label>
             <label className="block">

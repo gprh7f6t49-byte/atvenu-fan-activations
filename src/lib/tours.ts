@@ -1,4 +1,5 @@
 import { db, newId, tx } from "./db";
+import { parseUkDate } from "./dates";
 
 export interface Tour {
   id: string;
@@ -108,7 +109,7 @@ export function listTourCities(tourId: string): TourCity[] {
   return [...byCity.values()].sort((a, b) => a.first_date.localeCompare(b.first_date));
 }
 
-/** One date per line: date | venue | city | country | lat | lng (lat/lng optional). */
+/** One date per line: DD-MM-YYYY | venue | city | country | lat | lng (lat/lng optional). */
 export function parseDateLines(text: string): TourDateInput[] {
   return text
     .split("\n")
@@ -116,11 +117,12 @@ export function parseDateLines(text: string): TourDateInput[] {
     .filter(Boolean)
     .map((line, i) => {
       const [date, venue, city, country, lat, lng] = line.split("|").map((p) => p.trim());
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date ?? "") || !venue || !city) {
-        throw new Error(`Line ${i + 1} should look like "2027-06-12 | Wembley Stadium | London | GB"`);
+      const showDate = parseUkDate(date ?? "");
+      if (!showDate || !venue || !city) {
+        throw new Error(`Line ${i + 1} should look like "12-06-2027 | Wembley Stadium | London | GB"`);
       }
       return {
-        show_date: date,
+        show_date: showDate,
         venue,
         city,
         country: (country || "").toUpperCase(),

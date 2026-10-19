@@ -36,7 +36,7 @@ export async function buildGoogleSaveUrl(a: Activation, shows: Show[], pass: Pas
     barcode: { type: "QR_CODE", value: pass.code, alternateText: pass.code },
     ...(publicImages && {
       logo: { sourceUri: { uri: `${config.baseUrl}/api/activations/${a.id}/art/icon` } },
-      heroImage: { sourceUri: { uri: `${config.baseUrl}/api/activations/${a.id}/art/hero` } },
+      heroImage: { sourceUri: { uri: `${config.baseUrl}/api/activations/${a.id}/art/hero?v=${encodeURIComponent(a.updated_at)}` } },
     }),
     textModulesData: [
       { id: "code", header: "Code", body: pass.code },

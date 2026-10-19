@@ -31,8 +31,12 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
   return (
     <main style={brandStyle(a)} className="relative min-h-screen flex-1 overflow-hidden bg-brand text-ink">
       {a.hero_image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={a.hero_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={a.hero_image_url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-60" />
+          <div aria-hidden className="pointer-events-none absolute inset-0"
+            style={{ background: `linear-gradient(90deg, ${a.primary_color}f2 0%, ${a.primary_color}b3 55%, ${a.primary_color}66 100%)` }} />
+        </>
       ) : (
         <div
           aria-hidden

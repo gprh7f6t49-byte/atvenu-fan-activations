@@ -2,10 +2,12 @@ import Link from "next/link";
 import type { Activation, ActivationKind, Show } from "@/lib/activations";
 import type { Organisation } from "@/lib/orgs";
 import type { Tour } from "@/lib/tours";
+import { formatUkDate } from "@/lib/dates";
+import { ImageField } from "./image-field";
 
 const showsToText = (shows: Show[]) =>
   shows
-    .map((s) => [s.show_date, s.venue, s.city, s.country, s.latitude ?? "", s.longitude ?? ""].join(" | ").replace(/( \| )+$/, ""))
+    .map((s) => [formatUkDate(s.show_date), s.venue, s.city, s.country, s.latitude ?? "", s.longitude ?? ""].join(" | ").replace(/( \| )+$/, ""))
     .join("\n");
 
 const DEFAULTS: Record<ActivationKind, { discount: number; singleUse: boolean; terms: string }> = {
@@ -125,8 +127,10 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
           <Text name="tagline" label="Tagline" defaultValue={a?.tagline} placeholder="Skip the queue for the good stuff" />
           <Text name="privacy_url" label="Privacy notice URL" defaultValue={a?.privacy_url} placeholder="https://…" />
           <Area name="description" label="Description" defaultValue={a?.description} />
-          <Text name="hero_image_url" label="Hero image URL (optional)" defaultValue={a?.hero_image_url}
-            placeholder="https://… (licensed artwork from the artist's team)" />
+          <div className="md:col-span-2 max-w-xl">
+            <ImageField name="hero_image" label="Landing page image (optional)" current={a?.hero_image_url} aspect="aspect-[16/7]"
+              hint="Shown behind the sign-up page, and on the pass if you don't add a pass image. JPG, PNG or WebP up to 10 MB, ideally 2000px wide. Use artwork the artist's team has cleared." />
+          </div>
         </section>
       )}
 
@@ -135,11 +139,18 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
         <Color name="primary_color" label="Background" defaultValue={a?.primary_color ?? "#0B0B0C"} />
         <Color name="accent_color" label="Accent" defaultValue={a?.accent_color ?? "#E8C547"} />
         <Color name="text_color" label="Text" defaultValue={a?.text_color ?? "#FFFFFF"} />
+        <div className="md:col-span-3 max-w-xl">
+          <ImageField name="pass_image" label="Pass image (optional)" current={a?.pass_image_url} aspect="aspect-[375/123]"
+            hint={fan
+              ? "The banner across the wallet pass and pass page. Wide images work best (about 3:1); the middle is used. Leave empty to use the landing page image, or the brand colours."
+              : "The banner across the wallet pass and pass page. Wide images work best (about 3:1); the middle is used. Leave empty to use the brand colours."} />
+        </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         <h2 className="md:col-span-3 text-sm font-bold">Lifecycle</h2>
-        <Text name="pass_expires_at" label="Pass expires" type="date" defaultValue={a?.pass_expires_at?.slice(0, 10)} />
+        <Text name="pass_expires_at" label="Pass expires (DD-MM-YYYY)" defaultValue={formatUkDate(a?.pass_expires_at)} placeholder="e.g. 30-09-2027"
+          hint="Optional. The pass stops working after this day." />
         <label className="block">
           <span className="label">Status</span>
           <select name="status" defaultValue={a?.status ?? "draft"} className="input">
@@ -154,11 +165,11 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
       <section>
         <h2 className="mb-2 text-sm font-bold">Tour dates</h2>
         <p className="mb-2 text-xs text-zinc-500">
-          One per line: <code>date | venue | city | country | latitude | longitude</code>. Coordinates are optional; when set, the
+          One per line: <code>DD-MM-YYYY | venue | city | country | latitude | longitude</code>. Coordinates are optional; when set, the
           Apple Wallet pass pops up on the lock screen near the venue.
         </p>
         <textarea name="shows" rows={8} defaultValue={showsToText(shows)} className="input font-mono text-xs"
-          placeholder="2027-06-12 | Wembley Stadium | London | GB | 51.5560 | -0.2796" />
+          placeholder="12-06-2027 | Wembley Stadium | London | GB | 51.5560 | -0.2796" />
       </section>
       )}
     </div>

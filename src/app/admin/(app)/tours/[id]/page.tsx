@@ -6,6 +6,7 @@ import { KIND_LABELS } from "@/lib/discount";
 import { requireTour } from "@/lib/auth";
 import { listTourCities } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
+import { TourImport } from "./tour-import";
 import { addTourDateAction, deleteTourDateAction, pasteTourDatesAction, updateTourAction } from "../actions";
 
 export default async function TourPage({ params }: PageProps<"/admin/tours/[id]">) {
@@ -14,6 +15,8 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
   const cities = listTourCities(id);
   const activations = listActivationsForTour(id);
   const dateCount = cities.reduce((n, c) => n + c.dates.length, 0);
+  const countries = cities.map((c) => c.country).filter(Boolean);
+  const usualCountry = countries.sort((x, y) => countries.filter((c) => c === y).length - countries.filter((c) => c === x).length)[0] ?? "GB";
 
   return (
     <div className="space-y-6">
@@ -27,7 +30,7 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
         <section className="card overflow-x-auto">
           <h2 className="mb-3 font-semibold">Dates by city</h2>
           {cities.length === 0 ? (
-            <p className="text-sm text-zinc-500">No dates yet — add them below.</p>
+            <p className="text-sm text-zinc-500">No dates yet. Import them from the tour page below, or add them one by one.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-zinc-500">
@@ -65,7 +68,7 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
           <section className="card">
             <h2 className="mb-3 font-semibold">Add a date</h2>
             <ActionForm action={addTourDateAction.bind(null, id)} submitLabel="Add date" resetOnSuccess>
-              <label className="block"><span className="label">Date</span><input type="date" name="show_date" required className="input" /></label>
+              <label className="block"><span className="label">Date</span><input name="show_date" required className="input" placeholder="DD-MM-YYYY" inputMode="numeric" title="DD-MM-YYYY, e.g. 12-06-2027" /></label>
               <label className="block"><span className="label">Venue</span><input name="venue" required className="input" /></label>
               <div className="grid grid-cols-[1fr_80px] gap-2">
                 <label className="block"><span className="label">City</span><input name="city" required className="input" list="tour-cities" /></label>
@@ -81,13 +84,15 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
           </section>
           <section className="card">
             <h2 className="mb-1 font-semibold">Paste several dates</h2>
-            <p className="mb-3 text-xs text-zinc-500">date | venue | city | country | lat | lng</p>
+            <p className="mb-3 text-xs text-zinc-500">DD-MM-YYYY | venue | city | country | lat | lng</p>
             <ActionForm action={pasteTourDatesAction.bind(null, id)} submitLabel="Add dates" resetOnSuccess>
-              <textarea name="dates" rows={4} className="input font-mono text-xs" />
+              <textarea name="dates" rows={4} className="input font-mono text-xs" placeholder="12-06-2027 | Wembley Stadium | London | GB" />
             </ActionForm>
           </section>
         </aside>
       </div>
+
+      <TourImport tourId={id} defaultCountry={usualCountry} />
 
       <section className="card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

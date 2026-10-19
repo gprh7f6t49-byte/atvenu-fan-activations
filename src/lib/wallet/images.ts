@@ -1,9 +1,11 @@
 import "../fontconfig-env";
 import sharp from "sharp";
 import type { Activation } from "../activations";
+import { uploadedImage } from "../uploads";
 
 // Wallet artwork is generated from each activation's brand colours so a new tour
-// gets passes without a designer. Swap in uploaded artwork later via hero_image_url.
+// gets passes without a designer. When the client uploads a pass image (or, for fan
+// activations, a landing page image) that photo is used instead.
 
 const FONT = "Inter, 'DejaVu Sans', Arial, sans-serif";
 
@@ -21,10 +23,31 @@ export function hexToRgb(hex: string): [number, number, number] {
 
 export const rgbString = (hex: string) => `rgb(${hexToRgb(hex).join(", ")})`;
 
-/** Decorative band behind the offer on Apple coupon passes (375×123 @1x). */
+/** The uploaded photo to use on passes, if any. */
+export function passPhoto(a: Activation): Buffer | null {
+  return uploadedImage(a.pass_image_url) ?? (a.kind === "fan" ? uploadedImage(a.hero_image_url) : null);
+}
+
+/** Crops the photo to fill w×h; `shade` darkens it so text on top stays readable. */
+async function photoBanner(photo: Buffer, a: Activation, w: number, h: number, shade: number) {
+  const base = sharp(photo).resize(w, h, { fit: "cover", position: "attention" });
+  if (!shade) return base.png().toBuffer();
+  const overlay = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+    <defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${a.primary_color}" stop-opacity="${shade * 0.6}"/>
+      <stop offset="1" stop-color="${a.primary_color}" stop-opacity="${shade}"/>
+    </linearGradient></defs>
+    <rect width="100%" height="100%" fill="url(#s)"/>
+  </svg>`);
+  return base.composite([{ input: overlay }]).png().toBuffer();
+}
+
+/** Band behind the offer on Apple coupon passes (375×123 @1x). The offer text sits on top. */
 export function stripImage(a: Activation, scale = 1) {
   const w = 375 * scale;
   const h = 123 * scale;
+  const photo = passPhoto(a);
+  if (photo) return photoBanner(photo, a, w, h, 0.55);
   const fs = 76 * scale;
   return png(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
     <defs>
@@ -61,6 +84,8 @@ export function logoImage(a: Activation, scale = 1) {
 
 /** Hero banner for Google Wallet generic passes (1032×336). */
 export function heroImage(a: Activation) {
+  const photo = passPhoto(a);
+  if (photo) return photoBanner(photo, a, 1032, 336, 0);
   return png(`<svg xmlns="http://www.w3.org/2000/svg" width="1032" height="336">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
