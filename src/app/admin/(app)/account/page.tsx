@@ -5,7 +5,7 @@ import { getOrganisation } from "@/lib/orgs";
 import { ROLE_LABELS } from "@/lib/users";
 import { changePasswordAction, sendTestEmailAction, updateProfileAction } from "../team/actions";
 
-export const metadata = { title: "Account · Fan Activations" };
+export const metadata = { title: "Account · Activations" };
 
 export default async function AccountPage() {
   const me = await requireUser();

@@ -3,7 +3,7 @@ import { AuthCard } from "@/components/auth-card";
 import { SimpleForm } from "@/components/simple-form";
 import { forgotPassword } from "../login/actions";
 
-export const metadata = { title: "Reset password · Fan Activations" };
+export const metadata = { title: "Reset password · Activations" };
 
 export default function ForgotPage() {
   return (

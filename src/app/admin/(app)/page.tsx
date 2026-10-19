@@ -5,7 +5,7 @@ import { formatDiscount } from "@/lib/discount";
 import { isPlatformAdmin, orgScope, requireUser } from "@/lib/auth";
 import { fmtInt, fmtPct, fmtRevenue } from "@/lib/format";
 
-export const metadata = { title: "Fan Activations" };
+export const metadata = { title: "Activations" };
 
 export default async function ActivationsPage() {
   const user = await requireUser();
@@ -14,7 +14,7 @@ export default async function ActivationsPage() {
   return (
     <>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Fan Activations</h1>
+        <h1 className="text-2xl font-bold">Activations</h1>
         <Link href="/admin/activations/new" className="btn">New activation</Link>
       </div>
       {activations.length === 0 ? (

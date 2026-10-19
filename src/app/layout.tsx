@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Fan Activations",
+  title: "Activations",
   description: "Fan opt-in, wallet passes and merch attribution for atVenu promo codes",
 };
 

@@ -3,7 +3,7 @@ import { isPlatformAdmin, orgScope, requireUser } from "@/lib/auth";
 import { listTours } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
 
-export const metadata = { title: "Tours · Fan Activations" };
+export const metadata = { title: "Tours · Activations" };
 
 export default async function ToursPage() {
   const user = await requireUser();

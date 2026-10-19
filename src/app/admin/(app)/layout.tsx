@@ -15,7 +15,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
           <span className="font-black tracking-tight">atVenu</span>
           <nav className="flex flex-wrap gap-4 text-sm text-zinc-600">
-            <Link href="/admin" className="hover:text-zinc-900">Fan Activations</Link>
+            <Link href="/admin" className="hover:text-zinc-900">Activations</Link>
             <Link href="/admin/tours" className="hover:text-zinc-900">Tours</Link>
             {platform && <Link href="/admin/clients" className="hover:text-zinc-900">Clients</Link>}
             {user.role === "org_admin" && <Link href="/admin/team" className="hover:text-zinc-900">Team</Link>}
@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         <div className="bg-red-600 px-5 py-2 text-center text-sm font-semibold text-white">⚠ {storage}</div>
       )}
       <div className="mx-auto max-w-6xl px-5 py-8">{children}</div>
-      <footer className="mx-auto max-w-6xl px-5 pb-8 text-xs text-zinc-400">Fan Activations · version {appVersion}</footer>
+      <footer className="mx-auto max-w-6xl px-5 pb-8 text-xs text-zinc-400">Activations · version {appVersion}</footer>
     </div>
   );
 }

@@ -38,7 +38,7 @@ The city sign-up links and PINs are on each crew activation's **City sign-up lin
   1. Sign up at **Postmark** (postmarkapp.com) or **Resend** (resend.com).
   2. Add and verify your sending domain (e.g. `livetouch.app`) by adding the DNS records they show (DKIM + return path).
   3. In Railway Variables set `POSTMARK_SERVER_TOKEN` (or `RESEND_API_KEY`) and `EMAIL_FROM`, e.g.
-     `Fan Activations <passes@livetouch.app>`.
+     `Activations <passes@livetouch.app>`.
   4. In the app: **Account → Send test email to me**.
 - **Wallet passes**: see `certs/README.md`. Certificates can be pasted into variables as PEM text
   (`APPLE_SIGNER_CERT`, `APPLE_SIGNER_KEY`, `APPLE_WWDR_CERT`, `GOOGLE_WALLET_PRIVATE_KEY`).

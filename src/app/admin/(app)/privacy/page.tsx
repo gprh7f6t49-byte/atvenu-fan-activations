@@ -1,7 +1,7 @@
 import { ActionForm } from "@/components/action-form";
 import { deleteFanAction } from "../actions";
 
-export const metadata = { title: "Data requests · Fan Activations" };
+export const metadata = { title: "Data requests · Activations" };
 
 export default function PrivacyPage() {
   return (

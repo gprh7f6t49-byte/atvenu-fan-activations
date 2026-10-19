@@ -6,7 +6,7 @@ import { fmtDateTime } from "@/lib/format";
 import { listOrganisations } from "@/lib/orgs";
 import { createClientAction } from "../team/actions";
 
-export const metadata = { title: "Clients · Fan Activations" };
+export const metadata = { title: "Clients · Activations" };
 
 export default async function ClientsPage() {
   const me = await requirePlatformAdmin();

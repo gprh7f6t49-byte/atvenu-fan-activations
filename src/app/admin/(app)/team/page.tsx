@@ -3,7 +3,7 @@ import { TeamPanel } from "@/components/team-panel";
 import { requireUser } from "@/lib/auth";
 import { getOrganisation } from "@/lib/orgs";
 
-export const metadata = { title: "Team · Fan Activations" };
+export const metadata = { title: "Team · Activations" };
 
 export default async function TeamPage() {
   const me = await requireUser();

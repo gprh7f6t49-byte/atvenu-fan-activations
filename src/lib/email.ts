@@ -120,7 +120,7 @@ export function getEmail(id: string): { html: string; organisation_id: string | 
 /** Account emails (invites, password resets). Saved as "logged" when SMTP isn't configured. */
 export async function sendSystemEmail(to: string, subject: string, bodyHtml: string): Promise<void> {
   const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:520px;margin:24px auto;padding:0 16px">
-    <p style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#888">${esc(config.orgName)} Fan Activations</p>${bodyHtml}</body></html>`;
+    <p style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#888">${esc(config.orgName)} Activations</p>${bodyHtml}</body></html>`;
   const { status, error } = await deliver({ to, subject, html });
   db().prepare("INSERT INTO emails (id, opt_in_id, to_email, subject, html, status, error) VALUES (?,?,?,?,?,?,?)")
     .run(newId(), null, to, subject, html, status, error);

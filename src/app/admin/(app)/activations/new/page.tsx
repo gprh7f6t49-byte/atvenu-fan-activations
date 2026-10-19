@@ -8,7 +8,7 @@ import { listOrganisations } from "@/lib/orgs";
 import { listTours } from "@/lib/tours";
 import { createActivationAction } from "../../actions";
 
-export const metadata = { title: "New activation · Fan Activations" };
+export const metadata = { title: "New activation · Activations" };
 
 const KINDS: ActivationKind[] = ["fan", "crew", "comp"];
 

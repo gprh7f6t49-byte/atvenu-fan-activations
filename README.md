@@ -1,4 +1,4 @@
-# atVenu Fan Activations (pilot)
+# atVenu Activations (pilot)
 
 Unique atVenu promo codes delivered as Apple / Google Wallet QR passes, redeemed at the merch stand, with
 atVenu's redemption report tying every sale back to the person who held the code.

@@ -4,7 +4,7 @@ import path from "node:path";
 
 const version = (process.env.RAILWAY_GIT_COMMIT_SHA ?? "dev").slice(0, 7);
 const message = process.env.RAILWAY_GIT_COMMIT_MESSAGE?.split("\n")[0];
-console.log(`Fan Activations version ${version}${message ? ` — ${message}` : ""}`);
+console.log(`Activations version ${version}${message ? ` — ${message}` : ""}`);
 
 // Warn loudly if the database isn't on a Railway volume (data would be lost on every deploy).
 const dbPath = path.resolve(process.env.DATABASE_PATH ?? "data/activations.db");

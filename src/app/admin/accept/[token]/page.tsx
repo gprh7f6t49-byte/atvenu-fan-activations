@@ -5,7 +5,7 @@ import { getOrganisation } from "@/lib/orgs";
 import { findPasswordToken } from "@/lib/users";
 import { acceptToken } from "../../login/actions";
 
-export const metadata = { title: "Set your password · Fan Activations", robots: { index: false } };
+export const metadata = { title: "Set your password · Activations", robots: { index: false } };
 
 export default async function AcceptPage({ params }: PageProps<"/admin/accept/[token]">) {
   const { token } = await params;
@@ -21,7 +21,7 @@ export default async function AcceptPage({ params }: PageProps<"/admin/accept/[t
   const org = found.user.organisation_id ? getOrganisation(found.user.organisation_id) : undefined;
   const invite = found.purpose === "invite";
   return (
-    <AuthCard title={invite ? "Welcome to Fan Activations" : "Choose a new password"}>
+    <AuthCard title={invite ? "Welcome to Activations" : "Choose a new password"}>
       <p className="mb-4 text-sm text-zinc-600">
         {invite ? <>You&apos;ve been invited{org ? <> to <b>{org.name}</b></> : null}. </> : null}
         Signing in as <b>{found.user.email}</b>.

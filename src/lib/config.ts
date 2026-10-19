@@ -6,7 +6,7 @@ export const config = {
   adminPassword: process.env.ADMIN_PASSWORD ?? "",
   sessionSecret: process.env.SESSION_SECRET ?? process.env.ADMIN_PASSWORD ?? "dev-only-secret",
   orgName: process.env.ORG_NAME ?? "atVenu",
-  emailFrom: process.env.EMAIL_FROM ?? "atVenu Fan Activations <no-reply@example.com>",
+  emailFrom: process.env.EMAIL_FROM ?? "atVenu Activations <no-reply@example.com>",
   postmarkToken: process.env.POSTMARK_SERVER_TOKEN || null,
   resendKey: process.env.RESEND_API_KEY || null,
   smtp: process.env.SMTP_HOST

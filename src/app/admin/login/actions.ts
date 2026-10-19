@@ -82,7 +82,7 @@ export async function forgotPassword(_prev: { ok?: string; error?: string }, for
   const user = getUserByEmail(email);
   if (user && !user.disabled) {
     const link = `${config.baseUrl}/admin/accept/${createPasswordToken(user.id, "reset")}`;
-    await sendSystemEmail(user.email, "Reset your password", `<p>Someone asked to reset the password for your ${config.orgName} Fan Activations account.</p>
+    await sendSystemEmail(user.email, "Reset your password", `<p>Someone asked to reset the password for your ${config.orgName} Activations account.</p>
       <p><a href="${link}">Choose a new password</a> (this link works for 24 hours).</p><p>If this wasn't you, you can ignore this email.</p>`);
   }
   return {

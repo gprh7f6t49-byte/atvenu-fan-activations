@@ -3,7 +3,7 @@ import { isPlatformAdmin, requireUser } from "@/lib/auth";
 import { listOrganisations } from "@/lib/orgs";
 import { createTourAction } from "../actions";
 
-export const metadata = { title: "New tour · Fan Activations" };
+export const metadata = { title: "New tour · Activations" };
 
 export default async function NewTourPage() {
   const user = await requireUser();
