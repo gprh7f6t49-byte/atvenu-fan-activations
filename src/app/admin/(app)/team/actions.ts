@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOrgAdmin, requirePlatformAdmin, requireUser } from "@/lib/auth";
-import { config } from "@/lib/config";
-import { sendSystemEmail } from "@/lib/email";
+import { config, emailProvider } from "@/lib/config";
+import { lastEmailTo, sendSystemEmail } from "@/lib/email";
 import { createOrganisation, getOrganisation, getOrganisationByName, renameOrganisation } from "@/lib/orgs";
 import {
   createPasswordToken,
@@ -38,7 +38,7 @@ async function sendInvite(userId: string, inviterName: string, orgName: string |
 }
 
 const inviteNote = () =>
-  config.smtp ? "We've emailed them an invite. You can also send them this link:" : "Email isn't set up yet, so send them this link yourself:";
+  emailProvider() ? "We've emailed them an invite. You can also send them this link:" : "Email isn't set up yet, so send them this link yourself:";
 
 // ---- clients (atVenu admin) -------------------------------------------------
 
@@ -147,3 +147,14 @@ export async function changePasswordAction(_prev: FormState, form: FormData): Pr
   redirect("/admin/login");
 }
 
+
+export async function sendTestEmailAction(): Promise<FormState> {
+  const me = await requirePlatformAdmin();
+  const provider = emailProvider();
+  if (!provider) return { error: "No email service is connected yet. Add POSTMARK_SERVER_TOKEN or RESEND_API_KEY in Railway." };
+  await sendSystemEmail(me.email, "Test email from Fan Activations", `<p>It works! Emails from ${config.baseUrl} are being delivered via ${provider}.</p>`);
+  const last = lastEmailTo(me.email);
+  return last?.status === "sent"
+    ? { ok: `Sent via ${provider} to ${me.email}. Check your inbox (and spam folder).` }
+    : { error: `Sending failed: ${last?.error ?? "unknown error"}` };
+}

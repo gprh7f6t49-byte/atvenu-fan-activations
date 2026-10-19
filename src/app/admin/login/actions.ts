@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { clearSession, setSession } from "@/lib/auth";
-import { config } from "@/lib/config";
+import { config, emailProvider } from "@/lib/config";
 import { sendSystemEmail } from "@/lib/email";
 import { isLimited, recordHit } from "@/lib/rate-limit";
 import {
@@ -86,7 +86,7 @@ export async function forgotPassword(_prev: { ok?: string; error?: string }, for
       <p><a href="${link}">Choose a new password</a> (this link works for 24 hours).</p><p>If this wasn't you, you can ignore this email.</p>`);
   }
   return {
-    ok: config.smtp
+    ok: emailProvider()
       ? "If that email has an account, we've sent a link to reset the password."
       : "Email isn't set up yet, so ask your atVenu contact to send you a reset link.",
   };

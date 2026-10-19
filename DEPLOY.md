@@ -34,7 +34,12 @@ The city sign-up links and PINs are on each crew activation's **City sign-up lin
 
 ## 5. Later
 - **Own domain** (e.g. `fans.atvenu.com`): Settings → Networking → Custom Domain, then add the CNAME record it shows at your DNS provider. Update `PUBLIC_BASE_URL`.
-- **Email**: add `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` (e.g. from Postmark).
+- **Email**: Railway blocks SMTP on Trial/Hobby plans, so use an HTTPS email API:
+  1. Sign up at **Postmark** (postmarkapp.com) or **Resend** (resend.com).
+  2. Add and verify your sending domain (e.g. `livetouch.app`) by adding the DNS records they show (DKIM + return path).
+  3. In Railway Variables set `POSTMARK_SERVER_TOKEN` (or `RESEND_API_KEY`) and `EMAIL_FROM`, e.g.
+     `Fan Activations <passes@livetouch.app>`.
+  4. In the app: **Account → Send test email to me**.
 - **Wallet passes**: see `certs/README.md`. Certificates can be pasted into variables as PEM text
   (`APPLE_SIGNER_CERT`, `APPLE_SIGNER_KEY`, `APPLE_WWDR_CERT`, `GOOGLE_WALLET_PRIVATE_KEY`).
 - **Real use**: remove `SEED_DEMO`. To start clean, delete and recreate the volume.

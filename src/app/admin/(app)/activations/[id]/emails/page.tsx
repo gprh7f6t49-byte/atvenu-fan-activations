@@ -1,6 +1,6 @@
 import { requireActivation } from "@/lib/auth";
 import { listEmails } from "@/lib/email";
-import { config } from "@/lib/config";
+import { emailProvider } from "@/lib/config";
 import { fmtDateTime } from "@/lib/format";
 
 export default async function EmailsPage({ params }: PageProps<"/admin/activations/[id]/emails">) {
@@ -9,10 +9,10 @@ export default async function EmailsPage({ params }: PageProps<"/admin/activatio
   const emails = listEmails(id);
   return (
     <div className="space-y-4">
-      {!config.smtp && (
+      {!emailProvider() && (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-amber-200">
-          SMTP isn&apos;t configured, so emails are saved here instead of being sent. Add SMTP settings to <code>.env.local</code> to
-          deliver them.
+          Email isn&apos;t set up yet, so emails are saved here instead of being sent. An atVenu admin can connect Postmark or
+          Resend (see the Account page) to deliver them.
         </p>
       )}
       <div className="card overflow-x-auto p-0">

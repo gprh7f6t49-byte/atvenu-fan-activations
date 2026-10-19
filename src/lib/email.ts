@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import { deliver } from "./mailer";
 import QRCode from "qrcode";
 import { config } from "./config";
 import { db, newId } from "./db";
@@ -69,30 +69,12 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
 export async function sendPassEmail(a: Activation, shows: Show[], pass: PassRecord): Promise<void> {
   const { subject, html } = renderPassEmail(a, shows, pass);
   const qr = await QRCode.toBuffer(pass.code, { width: 400, margin: 1 });
-  let status: "sent" | "logged" | "failed" = "logged";
-  let error: string | null = null;
-
-  if (config.smtp) {
-    try {
-      const transport = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port,
-        secure: config.smtp.port === 465,
-        auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined,
-      });
-      await transport.sendMail({
-        from: config.emailFrom,
-        to: pass.email,
-        subject,
-        html,
-        attachments: [{ filename: "qr.png", content: qr, cid: "qr" }],
-      });
-      status = "sent";
-    } catch (err) {
-      status = "failed";
-      error = err instanceof Error ? err.message : String(err);
-    }
-  }
+  const { status, error } = await deliver({
+    to: pass.email,
+    subject,
+    html,
+    inline: [{ filename: "qr.png", contentId: "qr", content: qr, contentType: "image/png" }],
+  });
 
   const storedHtml = html.replace("cid:qr", `data:image/png;base64,${qr.toString("base64")}`);
   db()
@@ -133,24 +115,13 @@ export function getEmail(id: string): { html: string; organisation_id: string | 
 export async function sendSystemEmail(to: string, subject: string, bodyHtml: string): Promise<void> {
   const html = `<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:520px;margin:24px auto;padding:0 16px">
     <p style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#888">${esc(config.orgName)} Fan Activations</p>${bodyHtml}</body></html>`;
-  let status: "sent" | "logged" | "failed" = "logged";
-  let error: string | null = null;
-  if (config.smtp) {
-    try {
-      await nodemailer
-        .createTransport({
-          host: config.smtp.host,
-          port: config.smtp.port,
-          secure: config.smtp.port === 465,
-          auth: config.smtp.user ? { user: config.smtp.user, pass: config.smtp.pass } : undefined,
-        })
-        .sendMail({ from: config.emailFrom, to, subject, html });
-      status = "sent";
-    } catch (err) {
-      status = "failed";
-      error = err instanceof Error ? err.message : String(err);
-    }
-  }
+  const { status, error } = await deliver({ to, subject, html });
   db().prepare("INSERT INTO emails (id, opt_in_id, to_email, subject, html, status, error) VALUES (?,?,?,?,?,?,?)")
     .run(newId(), null, to, subject, html, status, error);
+}
+
+export function lastEmailTo(to: string): { status: string; error: string | null } | undefined {
+  return db().prepare("SELECT status, error FROM emails WHERE to_email = ? ORDER BY created_at DESC LIMIT 1").get(to) as
+    | { status: string; error: string | null }
+    | undefined;
 }
