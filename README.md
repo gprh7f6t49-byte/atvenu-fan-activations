@@ -76,6 +76,8 @@ npm run dev                     # http://localhost:3000
 Without SMTP or wallet credentials the app still works end to end. Emails go to the **Email outbox** tab and
 the pass page shows the QR code with a "wallet coming soon" note.
 
+See **DEPLOY.md** for putting it online (Railway, ~15 minutes).
+
 ## Going live checklist
 
 | Item | What's needed |
