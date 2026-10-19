@@ -11,11 +11,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
     <div className="min-h-screen flex-1 bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3">
-          <Link href="/admin" className="font-black tracking-tight">
-            atVenu <span className="font-medium text-zinc-500">Fan Activations</span>
-          </Link>
+          <span className="font-black tracking-tight">atVenu</span>
           <nav className="flex flex-wrap gap-4 text-sm text-zinc-600">
-            <Link href="/admin" className="hover:text-zinc-900">Activations</Link>
+            <Link href="/admin" className="hover:text-zinc-900">Fan Activations</Link>
             <Link href="/admin/tours" className="hover:text-zinc-900">Tours</Link>
             {platform && <Link href="/admin/clients" className="hover:text-zinc-900">Clients</Link>}
             {user.role === "org_admin" && <Link href="/admin/team" className="hover:text-zinc-900">Team</Link>}
