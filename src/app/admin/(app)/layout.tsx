@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { isPlatformAdmin, requireUser } from "@/lib/auth";
 import { getOrganisation } from "@/lib/orgs";
+import { appVersion, storageWarning } from "@/lib/runtime";
 import { logout } from "../login/actions";
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const user = await requireUser();
   const platform = isPlatformAdmin(user);
   const org = user.organisation_id ? getOrganisation(user.organisation_id) : undefined;
+  const storage = platform ? storageWarning() : null;
   return (
     <div className="min-h-screen flex-1 bg-zinc-50 text-zinc-900">
       <header className="border-b border-zinc-200 bg-white">
@@ -30,7 +32,11 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </div>
         </div>
       </header>
+      {storage && (
+        <div className="bg-red-600 px-5 py-2 text-center text-sm font-semibold text-white">⚠ {storage}</div>
+      )}
       <div className="mx-auto max-w-6xl px-5 py-8">{children}</div>
+      <footer className="mx-auto max-w-6xl px-5 pb-8 text-xs text-zinc-400">Fan Activations · version {appVersion}</footer>
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 // Pilot uses SQLite (built into Node 22+) so the app runs with zero external services.
 // All SQL lives in src/lib/*.ts — swapping to Postgres later means porting those queries.
 
-const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "activations.db");
+export const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "activations.db");
 
 const SCHEMA = `
 -- A client account (e.g. a merch company). Tours and activations belong to one.

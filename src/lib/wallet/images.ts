@@ -1,3 +1,4 @@
+import "../fontconfig-env";
 import sharp from "sharp";
 import type { Activation } from "../activations";
 
