@@ -1,0 +1,225 @@
+/* ==========================================================================
+   atVenu brand stylesheet
+   Source: atvenu.com (captured 2026-10-20)
+
+   Usage:
+     <link rel="stylesheet" href="atvenu-brand.css">
+     Dark is the brand default. For the light theme: <html data-theme="light">
+
+   Components (plain HTML, no framework needed):
+     <button class="atv-btn">Log In</button>
+     <button class="atv-btn atv-btn--gradient">Request Demo</button>
+     <button class="atv-btn atv-btn--primary">Request Demo</button>
+     <button class="atv-btn atv-btn--solid atv-btn--lg">See more</button>
+     <a class="atv-link" href="#">Learn More</a>
+     <div class="atv-metric"><h5 class="atv-metric__label">Yearly events run on atVenu</h5>
+       <div class="atv-metric__value atv-gradient-text">125K</div></div>
+     <div class="atv-pillar"><h2 class="atv-pillar__title">Partnership-level support</h2>
+       <p class="atv-pillar__body">…</p><a class="atv-link" href="#">Learn More</a></div>
+     <nav class="atv-nav"><img class="atv-nav__logo" src="atvenu-wordmark-white.png" alt="atVenu">
+       <div class="atv-nav__links"><a class="atv-nav__link" href="#">Solutions</a>…</div>
+       <div class="atv-nav__actions">…buttons…</div></nav>
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Open+Sans:wght@400;600&family=Rubik:wght@300;400;500;600;700&display=swap");
+
+/* ---------- Tokens: dark (brand default) ---------- */
+:root,
+[data-theme="dark"] {
+  /* Surfaces */
+  --bg-page: #1a1a1a;            /* page background */
+  --bg-black: #000000;           /* footer, full-bleed photo bands */
+  --bg-fade: #141414;            /* top stop of under-hero fade */
+  --surface-glass: rgba(0, 0, 0, 0.2);  /* panels, cards, ghost buttons */
+  --surface-scrim: rgba(0, 0, 0, 0.3);  /* overlays, mobile menu */
+
+  /* Text */
+  --ink: #ffffff;
+  --ink-muted: #dddddd;
+  --ink-subtle: #767676;         /* placeholders / disabled only */
+  --ink-inverse: #000000;        /* label on solid button */
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.2);
+  --border-faint: rgba(255, 255, 255, 0.1);
+
+  /* Controls & links */
+  --button-solid: #ffffff;
+  --atvenu-lt-blue: #26c1eb;     /* links, active tabs */
+  --link-hover: #a2e5ff;
+  --link-highlight: #0e497a80;
+  --focus-ring: #26c1eb;
+
+  /* Brand colours (same in every theme) */
+  --navy: #0e497a;
+  --gradient-cyan: #40c9ff;
+  --gradient-mid: #9473ff;
+  --gradient-magenta: #e81cff;
+  --periwinkle: #788fff;
+  --royal: #3860be;
+  --slate: #27455c;
+
+  /* Gradients */
+  --gradient-brand: linear-gradient(90deg, var(--gradient-cyan), var(--gradient-magenta));
+  --gradient-brand-diagonal: linear-gradient(115deg, var(--gradient-cyan), var(--gradient-magenta));
+  --gradient-button: linear-gradient(90deg, rgba(64, 201, 255, 0.6), rgba(148, 115, 255, 0.6) 50%, rgba(232, 28, 255, 0.6));
+
+  color-scheme: dark;
+}
+
+/* ---------- Tokens: light ---------- */
+[data-theme="light"] {
+  --bg-page: #ffffff;
+  --bg-black: #f4f4f4;
+  --bg-fade: #fafafa;
+  --surface-glass: rgba(0, 0, 0, 0.04);
+  --surface-scrim: rgba(0, 0, 0, 0.06);
+  --ink: #000000;
+  --ink-muted: #555555;
+  --ink-subtle: #606060;
+  --ink-inverse: #ffffff;
+  --border-subtle: rgba(0, 0, 0, 0.2);
+  --border-faint: rgba(0, 0, 0, 0.1);
+  --button-solid: #000000;
+  --atvenu-lt-blue: #0e497a;     /* cyan fails contrast on white, so links go navy */
+  --link-hover: #0a3359;
+  --link-highlight: #26c1eb33;
+  --focus-ring: #0e497a;
+  color-scheme: light;
+}
+
+/* ---------- Scale tokens ---------- */
+:root {
+  --font-display: Rubik, system-ui, sans-serif;
+  --font-body: Inter, system-ui, sans-serif;
+  --font-button: "Open Sans", system-ui, sans-serif;
+
+  --space-5: 5px;
+  --space-10: 10px;
+  --space-15: 15px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-40: 40px;
+  --space-48: 48px;
+  --space-65: 65px;
+
+  --radius-8: 8px;    /* buttons */
+  --radius-18: 18px;  /* cards, panels */
+  --radius-24: 24px;  /* stat cards */
+
+  --control-height: 40px;
+  --nav-height: 80px;
+}
+
+/* ---------- Base ---------- */
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); color: var(--ink); margin: 0; }
+a { color: var(--atvenu-lt-blue); }
+a:hover { color: var(--link-hover); }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* ---------- Type styles ---------- */
+.atv-hero        { font-family: var(--font-display); font-weight: 700; font-size: 133.12px; line-height: 122.88px; }
+.atv-stat        { font-family: var(--font-display); font-weight: 700; font-size: 64px; line-height: 83.2px; }
+.atv-h1          { font-family: var(--font-display); font-weight: 700; font-size: 56px; line-height: 72.8px; }
+.atv-h2          { font-family: var(--font-display); font-weight: 700; font-size: 48px; line-height: 62.4px; }
+.atv-pillar-title{ font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 33.8px; }
+.atv-h5          { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 24px; }
+.atv-tab-label   { font-family: var(--font-display); font-weight: 500; font-size: 20px; line-height: 25px; letter-spacing: 0.5px; }
+.atv-eyebrow     { font-family: var(--font-display); font-weight: 500; font-size: 18px; line-height: 19.8px; text-transform: uppercase; }
+.atv-h4          { font-family: var(--font-display); font-weight: 500; font-size: 14px; line-height: 17.5px; letter-spacing: 0.5px; }
+.atv-body        { font-family: var(--font-body); font-weight: 300; font-size: 16px; line-height: 20px; }
+.atv-ui          { font-family: var(--font-display); font-weight: 400; font-size: 14px; line-height: 20px; }
+.atv-footer-link { font-family: var(--font-display); font-weight: 300; font-size: 14px; line-height: 20px; }
+.atv-muted       { color: var(--ink-muted); }
+
+/* Large display text: shrink on small screens */
+@media (max-width: 767px) {
+  .atv-hero { font-size: 64px; line-height: 60px; }
+  .atv-stat, .atv-h1 { font-size: 40px; line-height: 48px; }
+  .atv-h2 { font-size: 32px; line-height: 40px; }
+}
+
+/* ---------- Gradient text (stat numbers, hero words) ---------- */
+.atv-gradient-text {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ---------- Surfaces ---------- */
+.atv-panel {
+  background: var(--surface-glass);
+  border-radius: var(--radius-18);
+  padding: var(--space-48) var(--space-20);
+}
+
+/* ---------- Button ---------- */
+.atv-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: var(--control-height);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-8);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-glass);
+  color: var(--ink);
+  font-family: var(--font-display); font-size: 14px; line-height: 20px; font-weight: 400;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background-color .2s, border-color .2s;
+}
+.atv-btn:hover { color: var(--ink); border-color: var(--ink-muted); }
+.atv-btn:disabled { color: var(--ink-subtle); cursor: not-allowed; }
+.atv-btn--gradient:hover { border-color: transparent; background: var(--gradient-button); }
+.atv-btn--primary { border-color: transparent; background: var(--gradient-button); }
+.atv-btn--solid {
+  background: var(--button-solid); color: var(--ink-inverse); border-color: var(--border-faint);
+  font-family: var(--font-button); font-weight: 600;
+}
+.atv-btn--solid:hover { color: var(--ink-inverse); border-color: var(--border-faint); opacity: .9; }
+.atv-btn--lg { height: auto; padding: 6px var(--space-40); font-size: 17.5px; line-height: 24px; }
+
+/* ---------- Text link ("Learn More") ---------- */
+.atv-link { color: var(--gradient-cyan); font-family: var(--font-body); font-size: 16px; line-height: 20px; text-decoration: none; }
+.atv-link:hover { color: var(--link-hover); }
+[data-theme="light"] .atv-link { color: var(--atvenu-lt-blue); }
+
+/* ---------- Metric card ("By the Numbers") ---------- */
+.atv-metric {
+  display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-20);
+  padding: var(--space-20); border-radius: var(--radius-24); border: 1px solid transparent;
+  box-sizing: border-box;
+}
+.atv-metric__label { font-family: var(--font-display); font-weight: 700; font-size: 20px; line-height: 24px; color: var(--ink); margin: 0; }
+.atv-metric__value { font-family: var(--font-display); font-weight: 700; font-size: 56px; line-height: 72.8px; margin: 0; }
+
+/* ---------- Pillar card ---------- */
+.atv-pillar {
+  display: flex; flex-direction: column; gap: var(--space-10);
+  padding: var(--space-20); border-radius: var(--radius-18); background: var(--surface-glass);
+  box-sizing: border-box;
+}
+.atv-pillar__title { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 33.8px; color: var(--ink); margin: 0; }
+.atv-pillar__body { font-family: var(--font-body); font-weight: 300; font-size: 16px; line-height: 20px; color: var(--ink); margin: 0; flex: 1; }
+
+/* ---------- Nav bar ---------- */
+.atv-nav {
+  display: flex; align-items: center; gap: var(--space-40);
+  height: var(--nav-height); padding: 0 var(--space-20); box-sizing: border-box;
+}
+.atv-nav__logo { height: 24px; width: auto; display: block; }
+.atv-nav__links { display: flex; gap: var(--space-40); flex: 1; }
+.atv-nav__link { font-family: var(--font-display); font-size: 14px; line-height: 20px; color: var(--ink); text-decoration: none; }
+.atv-nav__link:hover { color: var(--link-hover); }
+.atv-nav__actions { display: flex; gap: var(--space-10); }
+@media (max-width: 767px) { .atv-nav__links { display: none; } }

@@ -1,13 +1,15 @@
 // Small server-rendered SVG charts for the admin dashboard. Single series, so one
-// hue (slot 1 of the reference categorical palette) and the title names the series.
+// hue (atVenu light blue, readable on the dark admin) and the title names the series.
 
-const SERIES = "#2a78d6";
+const SERIES = "#26c1eb";
+const GRID = { stroke: "var(--color-zinc-200)" };
+const AXIS = { fill: "var(--color-zinc-500)" };
 
 export function StatTile({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
     <div className="card">
       <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-1 text-3xl font-bold tabular-nums">{value}</p>
+      <p className="font-display mt-1 text-3xl font-bold tabular-nums">{value}</p>
       {sub && <p className="mt-1 text-xs text-zinc-500">{sub}</p>}
     </div>
   );
@@ -55,8 +57,8 @@ export function DailyBars({ data, label }: { data: { day: string; value: number 
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={label}>
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={PAD_L} x2={W} y1={y(t)} y2={y(t)} stroke="#e4e4e7" strokeWidth={1} />
-            <text x={PAD_L - 6} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} fill="#71717a">{t}</text>
+            <line x1={PAD_L} x2={W} y1={y(t)} y2={y(t)} style={GRID} strokeWidth={1} />
+            <text x={PAD_L - 6} y={y(t)} dy="0.32em" textAnchor="end" fontSize={10} style={AXIS}>{t}</text>
           </g>
         ))}
         {data.map((d, i) => {
@@ -74,7 +76,7 @@ export function DailyBars({ data, label }: { data: { day: string; value: number 
                   d={`M${x},${H - PAD_B} V${top + Math.min(4, h)} q0,-${Math.min(4, h)} ${Math.min(4, barW / 2)},-${Math.min(4, h)} H${x + barW - Math.min(4, barW / 2)} q${Math.min(4, barW / 2)},0 ${Math.min(4, barW / 2)},${Math.min(4, h)} V${H - PAD_B} Z`} />
               )}
               {i % labelEvery === 0 && (
-                <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize={10} fill="#71717a">{d.day.slice(5)}</text>
+                <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize={10} style={AXIS}>{d.day.slice(5)}</text>
               )}
             </g>
           );

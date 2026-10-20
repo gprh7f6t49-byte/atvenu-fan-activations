@@ -1,3 +1,4 @@
+import { PoweredBy } from "@/components/powered-by";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getActivation } from "@/lib/activations";
@@ -129,6 +130,7 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
           {a.offer_terms && <p className="text-xs opacity-70">{a.offer_terms}</p>}
         </div>
       </div>
+      <PoweredBy className="pt-6" />
     </main>
   );
 }

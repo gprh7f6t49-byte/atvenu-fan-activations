@@ -83,6 +83,13 @@ don't count, so crew sharing venue Wi-Fi aren't locked out. **New PIN** signs ev
 passes keep working. Signing up again with an email that already has a pass re-sends it by email rather than showing it,
 so nobody can pull up someone else's pass by typing their email. The fan landing page now works the same way.
 
+### Branding
+
+The admin and sign-in pages use the atVenu dark theme from `public/brand/atvenu-brand.css` (tokens, Rubik / Inter,
+gradient buttons, light-blue links), with the logos in `public/brand/`. It's applied by the `.atv` class in
+`src/app/globals.css`, which remaps the Tailwind colours used across the admin. Fan landing pages, pass pages and crew
+sign-up pages keep each artist's colours and carry a small "Powered by atVenu" link.
+
 ### Images
 
 In an activation's **Settings**, upload a **Landing page image** (fan activations) and a **Pass image** (JPG, PNG or

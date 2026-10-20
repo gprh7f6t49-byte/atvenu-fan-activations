@@ -18,6 +18,177 @@ body {
   font-family: var(--font-sans);
 }
 
+/* ==========================================================================
+   atVenu brand (admin, sign-in): dark theme from public/brand/atvenu-brand.css.
+   Fan landing pages and passes keep each artist's own colours instead.
+
+   The admin was built with Tailwind's zinc / status colours, so inside .atv those
+   colour variables are remapped to the atVenu dark palette rather than restyling
+   every element: zinc-900 (strong text) becomes white, white surfaces become dark
+   glass, and pale status backgrounds become translucent tints.
+   ========================================================================== */
+.atv {
+  --bg-page: #1a1a1a;
+  --surface: #222222;
+  --surface-raised: #2a2a2a;
+  --surface-glass: rgba(0, 0, 0, 0.2);
+  --atv-ink: #ffffff;
+  --ink-muted: #dddddd;
+  --border-subtle: rgba(255, 255, 255, 0.2);
+  --border-faint: rgba(255, 255, 255, 0.1);
+  --atvenu-lt-blue: #26c1eb;
+  --link-hover: #a2e5ff;
+  --gradient-cyan: #40c9ff;
+  --gradient-mid: #9473ff;
+  --gradient-magenta: #e81cff;
+  --gradient-brand: linear-gradient(90deg, var(--gradient-cyan), var(--gradient-magenta));
+  --gradient-button: linear-gradient(90deg, rgba(64, 201, 255, 0.6), rgba(148, 115, 255, 0.6) 50%, rgba(232, 28, 255, 0.6));
+  --font-display: Rubik, system-ui, sans-serif;
+  --font-body: Inter, system-ui, sans-serif;
+
+  --color-white: var(--surface);
+  --color-black: #000000;
+  --color-zinc-50: rgba(255, 255, 255, 0.04);
+  --color-zinc-100: rgba(255, 255, 255, 0.08);
+  --color-zinc-200: rgba(255, 255, 255, 0.12);
+  --color-zinc-300: rgba(255, 255, 255, 0.2);
+  --color-zinc-400: #8c8c8c;
+  --color-zinc-500: #a8a8a8;
+  --color-zinc-600: #c8c8c8;
+  --color-zinc-700: #dddddd;
+  --color-zinc-800: #eeeeee;
+  --color-zinc-900: #ffffff;
+
+  --color-emerald-50: rgba(52, 211, 153, 0.12);
+  --color-emerald-200: rgba(52, 211, 153, 0.35);
+  --color-emerald-300: rgba(52, 211, 153, 0.5);
+  --color-emerald-600: #34d399;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-emerald-900: #d1fae5;
+  --color-amber-50: rgba(251, 191, 36, 0.12);
+  --color-amber-200: rgba(251, 191, 36, 0.35);
+  --color-amber-300: rgba(251, 191, 36, 0.5);
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+  --color-red-50: rgba(248, 113, 113, 0.12);
+  --color-red-300: rgba(248, 113, 113, 0.5);
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-sky-50: rgba(38, 193, 235, 0.12);
+  --color-sky-200: rgba(38, 193, 235, 0.35);
+  --color-sky-700: #7dd9f3;
+  --color-violet-50: rgba(148, 115, 255, 0.15);
+  --color-violet-200: rgba(148, 115, 255, 0.4);
+  --color-violet-700: #c4b5fd;
+  --color-orange-50: rgba(251, 146, 60, 0.12);
+  --color-orange-200: rgba(251, 146, 60, 0.35);
+  --color-orange-700: #fdba74;
+
+  color-scheme: dark;
+  background: var(--bg-page);
+  color: var(--atv-ink);
+  font-family: var(--font-body);
+}
+.atv h1,
+.atv h2,
+.atv h3,
+.atv .font-display {
+  font-family: var(--font-display);
+}
+.atv a:not([class*="btn"]):not([class*="rounded-full"]) {
+  transition: color 0.15s;
+}
+.atv a.underline,
+.atv .underline:is(a, button) {
+  color: var(--atvenu-lt-blue);
+}
+.atv a.underline:hover,
+.atv .underline:is(a, button):hover {
+  color: var(--link-hover);
+}
+.atv :focus-visible {
+  outline: 2px solid var(--atvenu-lt-blue);
+  outline-offset: 2px;
+}
+.atv .atv-gradient-text {
+  background-image: var(--gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.atv .atv-gradient-rule {
+  height: 2px;
+  background: var(--gradient-brand);
+}
+.atv .card {
+  @apply rounded-[18px] border p-5 shadow-none;
+  background: var(--surface);
+  border-color: var(--border-faint);
+}
+.atv .input {
+  @apply rounded-lg shadow-none;
+  background: rgba(0, 0, 0, 0.25);
+  border-color: var(--border-subtle);
+  color: var(--atv-ink);
+}
+.atv .input::placeholder {
+  color: #767676;
+}
+.atv .input:focus {
+  border-color: var(--atvenu-lt-blue);
+  --tw-ring-color: rgba(38, 193, 235, 0.25);
+}
+.atv select.input option {
+  background: var(--surface);
+  color: var(--atv-ink);
+}
+.atv .label {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+/* atv-btn--primary: gradient, white label */
+.atv .btn {
+  @apply rounded-lg px-4 py-2 text-sm;
+  font-family: var(--font-display);
+  font-weight: 500;
+  color: #ffffff;
+  background: var(--gradient-button);
+  border: 1px solid transparent;
+}
+.atv .btn:hover {
+  background: linear-gradient(90deg, rgba(64, 201, 255, 0.8), rgba(148, 115, 255, 0.8) 50%, rgba(232, 28, 255, 0.8));
+}
+/* atv-btn: glass with a subtle border */
+.atv .btn-secondary {
+  @apply rounded-lg px-4 py-2 text-sm;
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--atv-ink);
+  background: var(--surface-glass);
+  border: 1px solid var(--border-subtle);
+}
+.atv .btn-secondary:hover {
+  background: var(--surface-glass);
+  border-color: var(--ink-muted);
+}
+.atv input[type="checkbox"],
+.atv input[type="radio"] {
+  accent-color: var(--atvenu-lt-blue);
+}
+.atv input[type="file"]::file-selector-button {
+  margin-right: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-glass);
+  color: var(--atv-ink);
+  padding: 0.35rem 0.75rem;
+  font-family: var(--font-display);
+  cursor: pointer;
+}
+
 .input {
   @apply w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm outline-none focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10;
 }

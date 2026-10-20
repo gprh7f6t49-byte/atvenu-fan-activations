@@ -1,3 +1,4 @@
+import { PoweredBy } from "@/components/powered-by";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getActivationBySlug, listShows } from "@/lib/activations";
@@ -107,7 +108,7 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
         )}
       </div>
 
-      <footer className="relative z-10 pb-8 text-center text-xs opacity-40">Powered by atVenu</footer>
+      <PoweredBy />
     </main>
   );
 }

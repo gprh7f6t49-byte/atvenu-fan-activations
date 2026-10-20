@@ -1,3 +1,4 @@
+import { PoweredBy } from "@/components/powered-by";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
@@ -64,8 +65,8 @@ export default async function CrewSignupPage({ params }: PageProps<"/c/[token]">
           )}
         </div>
         {a.offer_terms && <p className="mt-6 text-xs opacity-50">{a.offer_terms}</p>}
-        <p className="mt-8 text-center text-xs opacity-40">Powered by atVenu</p>
       </div>
+      <PoweredBy className="pt-6" />
     </main>
   );
 }
