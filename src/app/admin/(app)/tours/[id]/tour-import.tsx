@@ -6,6 +6,11 @@ import { COUNTRIES } from "@/lib/countries";
 import { formatUkDate } from "@/lib/dates";
 import { addImportedDatesAction, findTourDatesAction, type ImportState } from "../actions";
 
+const isPast = (ukDate: string) => {
+  const [d, m, y] = ukDate.split("-");
+  return Boolean(y) && `${y}-${m}-${d}` < new Date().toISOString().slice(0, 10);
+};
+
 interface Row {
   key: number;
   selected: boolean;
@@ -41,13 +46,13 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
   return (
     <section className="card">
       <details open={!collapsed || rows.length > 0} className="group">
-      <summary className="cursor-pointer list-none font-semibold">
-        Import dates from the tour page
-        {collapsed && <span className="ml-2 text-sm font-normal text-zinc-500 group-open:hidden">— add more dates from a web page or pasted text ▸</span>}
+      <summary className="cursor-pointer list-none text-lg font-bold">
+        Add tour dates
+        {collapsed && <span className="ml-2 text-sm font-normal text-zinc-500 group-open:hidden">— paste more dates or a tour page link ▸</span>}
       </summary>
       <p className="mb-4 mt-1 text-sm text-zinc-600">
-        Paste a link to the artist&apos;s or promoter&apos;s tour page and we&apos;ll read the dates for you. If a site won&apos;t let us
-        in, select the dates on the page, copy, and paste them into the box instead.
+        Copy the dates from anywhere (a website, Google, an email, a spreadsheet) and paste them here as they are. We&apos;ll
+        pick out each date, venue and city, and you can check them before they&apos;re added.
       </p>
       <form
         className="space-y-3"
@@ -57,10 +62,16 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
           startTransition(() => findAction(data));
         }}
       >
-        <div className="grid gap-3 md:grid-cols-[1fr_180px]">
+        <label className="block">
+          <span className="label">Paste tour dates — any format</span>
+          <textarea name="text" rows={7} className="input text-sm"
+            placeholder={"Fri, Apr 24, 2026: Norwich – UEA\nSat, Apr 25, 2026: Brighton – The Dome\n19-06-2027 | Croke Park | Dublin | Ireland\nSep 3, 2026: Santa Ana, CA – The Observatory"} />
+        </label>
+        <div className="grid gap-3 md:grid-cols-[1fr_200px]">
           <label className="block">
-            <span className="label">Tour page link</span>
+            <span className="label">…or a link to the tour page</span>
             <input name="url" type="text" inputMode="url" className="input" placeholder="https://artist.com/tour" />
+            <span className="mt-1 block text-xs text-zinc-500">Used when the box above is empty. Some sites block this; pasting always works.</span>
           </label>
           <label className="block">
             <span className="label">Country if not shown</span>
@@ -70,12 +81,6 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
             </select>
           </label>
         </div>
-        <label className="block">
-          <span className="label">…or paste the dates</span>
-          <textarea name="text" rows={4} className="input text-xs"
-            placeholder={"Fri 11 June 2027  Wembley Stadium, London\nSat 12 June 2027  Wembley Stadium, London\n19-06-2027 Croke Park, Dublin, Ireland"} />
-          <span className="mt-1 block text-xs text-zinc-500">Any common layout works. Used only when the link box is empty.</span>
-        </label>
         <div className="flex flex-wrap items-center gap-3">
           <button className="btn" disabled={finding}>{finding ? "Reading…" : "Find dates"}</button>
           {state.error && <p className="text-sm text-red-600">{state.error}</p>}
@@ -108,7 +113,7 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
                     <td className="pr-2"><input value={r.city} onChange={(e) => update(r.key, { city: e.currentTarget.value })} className="input py-1" /></td>
                     <td className="pr-2"><input value={r.country} maxLength={2} onChange={(e) => update(r.key, { country: e.currentTarget.value.toUpperCase() })} className="input py-1 uppercase" placeholder="GB" /></td>
                     <td className="whitespace-nowrap text-xs text-zinc-500">
-                      {r.duplicate ? "Already on tour" : r.latitude != null ? "📍" : ""}
+                      {r.duplicate ? "Already on tour" : isPast(r.show_date) ? "In the past" : r.latitude != null ? "📍" : ""}
                     </td>
                   </tr>
                 ))}

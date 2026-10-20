@@ -72,17 +72,6 @@ export async function addTourDateAction(tourId: string, _prev: FormState, form: 
   return { ok: `Added ${parsed.data.city} · ${formatUkDate(parsed.data.show_date)}` };
 }
 
-export async function pasteTourDatesAction(tourId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireTour(tourId);
-  try {
-    const n = addTourDates(tourId, parseDateLines(String(form.get("dates") ?? "")));
-    revalidatePath("/admin", "layout");
-    return n ? { ok: `Added ${n} date(s)` } : { error: "Paste at least one date" };
-  } catch (err) {
-    return { error: (err as Error).message };
-  }
-}
-
 export async function deleteTourDateAction(tourId: string, dateId: string) {
   await requireTour(tourId);
   deleteTourDate(tourId, dateId);
@@ -106,15 +95,16 @@ export async function findTourDatesAction(tourId: string, _prev: ImportState, fo
   if (text.length > 200_000) return { error: "That's too much text — paste just the tour dates" };
   let result;
   try {
-    result = url ? await importFromUrl(url, country) : importFromText(text, country);
+    // Pasted text wins: it's what the person can see and is never blocked.
+    result = text ? importFromText(text, country) : await importFromUrl(url, country);
   } catch (err) {
     return { error: (err as Error).message };
   }
   if (!result.dates.length) {
     return {
-      error: url
+      error: !text
         ? "We couldn't find any dates on that page (some sites load dates with scripts we can't read). Select the dates on the page, copy them and paste them in the box instead."
-        : "We couldn't find any dates in that text. Each show needs a date, e.g. 11-06-2027 or Fri 11 June 2027.",
+        : "We couldn't find any dates in that text. Each show needs a date with a day and month, e.g. 11-06-2027, Fri 11 June 2027 or Jun 11, 2027.",
     };
   }
   const existing = new Set(listTourDates(tourId).map((d) => `${d.show_date}|${d.city.toLowerCase()}`));

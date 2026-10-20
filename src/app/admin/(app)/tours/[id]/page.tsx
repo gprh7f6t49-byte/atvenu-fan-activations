@@ -7,7 +7,7 @@ import { requireTour } from "@/lib/auth";
 import { listTourCities } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
 import { TourImport } from "./tour-import";
-import { addTourDateAction, deleteTourDateAction, pasteTourDatesAction, updateTourAction } from "../actions";
+import { addTourDateAction, deleteTourDateAction, updateTourAction } from "../actions";
 
 export default async function TourPage({ params, searchParams }: PageProps<"/admin/tours/[id]">) {
   const { id } = await params;
@@ -43,7 +43,7 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
         <ol className="grid gap-3 md:grid-cols-3">
           <Step n={1} done title="Create the tour" text={`${tour.artist_name} · ${tour.name}`} />
           <Step n={2} done={dateCount > 0} title="Add the dates"
-            text={dateCount ? `${dateCount} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}. Add more any time.` : "Import them from the tour page below, or add them one by one."} />
+            text={dateCount ? `${dateCount} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}. Add more any time.` : "Paste them in any format below, or use a tour page link."} />
           <Step n={3} done={false} title="Choose activations" text="Fan, crew and comps together — they all share these dates.">
             <Link href={`/admin/tours/${id}/setup`} className={dateCount ? "btn mt-3" : "btn-secondary mt-3"}>Set up activations →</Link>
           </Step>
@@ -56,7 +56,7 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
         <section className="card overflow-x-auto">
           <h2 className="mb-3 font-semibold">Dates by city</h2>
           {cities.length === 0 ? (
-            <p className="text-sm text-zinc-500">No dates yet. Import them from the tour page below, or add them one by one.</p>
+            <p className="text-sm text-zinc-500">No dates yet. Paste them into Add tour dates above.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-zinc-500">
@@ -92,7 +92,7 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
 
         <aside className="space-y-6">
           <section className="card">
-            <h2 className="mb-3 font-semibold">Add a date</h2>
+            <h2 className="mb-3 font-semibold">Add one date</h2>
             <ActionForm action={addTourDateAction.bind(null, id)} submitLabel="Add date" resetOnSuccess>
               <label className="block"><span className="label">Date</span><input name="show_date" required className="input" placeholder="DD-MM-YYYY" inputMode="numeric" title="DD-MM-YYYY, e.g. 12-06-2027" /></label>
               <label className="block"><span className="label">Venue</span><input name="venue" required className="input" /></label>
@@ -106,13 +106,6 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
                 <label className="block"><span className="label">Longitude</span><input name="longitude" inputMode="decimal" className="input" placeholder="Optional" /></label>
               </div>
               <p className="text-xs text-zinc-500">Same city name = same city. Coordinates make Apple Wallet passes pop up near the venue.</p>
-            </ActionForm>
-          </section>
-          <section className="card">
-            <h2 className="mb-1 font-semibold">Paste several dates</h2>
-            <p className="mb-3 text-xs text-zinc-500">DD-MM-YYYY | venue | city | country | lat | lng</p>
-            <ActionForm action={pasteTourDatesAction.bind(null, id)} submitLabel="Add dates" resetOnSuccess>
-              <textarea name="dates" rows={4} className="input font-mono text-xs" placeholder="12-06-2027 | Wembley Stadium | London | GB" />
             </ActionForm>
           </section>
         </aside>

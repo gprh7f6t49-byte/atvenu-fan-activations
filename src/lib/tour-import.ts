@@ -199,6 +199,21 @@ const CITY_COUNTRY: Record<string, string> = {
   madrid: "ES", barcelona: "ES", lisbon: "PT", porto: "PT", milan: "IT", rome: "IT", bologna: "IT",
   copenhagen: "DK", stockholm: "SE", gothenburg: "SE", oslo: "NO", helsinki: "FI", vienna: "AT", zurich: "CH",
   zürich: "CH", prague: "CZ", warsaw: "PL", kraków: "PL", krakow: "PL", budapest: "HU", athens: "GR",
+  norwich: "GB", brighton: "GB", bournemouth: "GB", southampton: "GB", portsmouth: "GB", plymouth: "GB", exeter: "GB",
+  oxford: "GB", cambridge: "GB", leicester: "GB", coventry: "GB", wolverhampton: "GB", stoke: "GB", hull: "GB",
+  york: "GB", sunderland: "GB", middlesbrough: "GB", preston: "GB", blackpool: "GB", swansea: "GB", dundee: "GB",
+  inverness: "GB", derby: "GB", bath: "GB", reading: "GB", northampton: "GB", ipswich: "GB", margate: "GB",
+  galway: "IE", limerick: "IE", kilkenny: "IE", utrecht: "NL", tilburg: "NL", eindhoven: "NL", groningen: "NL",
+  ghent: "BE", liège: "BE", bordeaux: "FR", toulouse: "FR", lille: "FR", nantes: "FR", strasbourg: "FR",
+  stuttgart: "DE", leipzig: "DE", dresden: "DE", hannover: "DE", hanover: "DE", bremen: "DE", nuremberg: "DE",
+  valencia: "ES", seville: "ES", bilbao: "ES", turin: "IT", florence: "IT", naples: "IT", verona: "IT",
+  aarhus: "DK", malmö: "SE", bergen: "NO", tampere: "FI", geneva: "CH", basel: "CH", lausanne: "CH",
+  salzburg: "AT", graz: "AT", luxembourg: "LU", reykjavik: "IS", tallinn: "EE", riga: "LV", vilnius: "LT",
+  bratislava: "SK", ljubljana: "SI", zagreb: "HR", bucharest: "RO", sofia: "BG",
+  boston: "US", philadelphia: "US", washington: "US", atlanta: "US", miami: "US", nashville: "US", austin: "US",
+  dallas: "US", houston: "US", denver: "US", seattle: "US", portland: "US", "san francisco": "US", oakland: "US",
+  "san diego": "US", "las vegas": "US", phoenix: "US", detroit: "US", minneapolis: "US", brooklyn: "US",
+  "santa ana": "US", vancouver: "CA", calgary: "CA", ottawa: "CA", brisbane: "AU", perth: "AU", adelaide: "AU",
   "new york": "US", "los angeles": "US", chicago: "US", toronto: "CA", montreal: "CA", sydney: "AU",
   melbourne: "AU", auckland: "NZ", tokyo: "JP", "mexico city": "MX", "são paulo": "BR",
 };
@@ -313,60 +328,161 @@ export function htmlToText(html: string): string {
 }
 
 const VENUE_WORDS =
-  /\b(stadium|stadion|stade|estadio|arena|park|hall|centre|center|theatre|theater|field|bowl|dome|ground|club|academy|garden|gardens|o2|forum|pavilion|amphitheatre|amphitheater|ballroom|palace|palais|palau|olympia|apollo|hippodrome|coliseum|colosseum|festival|castle|racecourse|showground|halle|zentrum|kirche|church|room|rooms|house|barrowland|wembley|lido|warehouse)\b/i;
+  /\b(stadium|stadion|stade|estadio|arena|park|hall|centre|center|theatre|theater|field|bowl|dome|ground|club|academy|garden|gardens|o2|forum|pavilion|amphitheatre|amphitheater|ballroom|palace|palais|palau|olympia|apollo|hippodrome|coliseum|colosseum|festival|castle|racecourse|showground|halle|zentrum|kirche|church|room|rooms|house|barrowland|wembley|lido|warehouse|exchange|tramshed|observatory|palladium|uea|institute|union|cathedral|chapel|hotel|casino|pier|lounge|bar|venue|studios?|factory|depot|mill|works|shed|hangar|tent|marquee|auditorium|opera|concert|music|live|ziggo|ahoy|sportpaleis|uber|o2)\b/i;
 const NOISE =
-  /^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(day|nesday|rsday|urday)?\.?$|^(tickets?|buy( tickets)?|sold out|on sale.*|more info|info|vip|rsvp|find tickets|get tickets|low tickets|limited|new date|rescheduled|cancelled|postponed|\d{1,2}[:.]\d{2}\s*(am|pm)?|doors.*|\d{4})$/i;
+  /^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(day|nesday|rsday|urday)?\.?$|^(tickets?|buy( tickets)?|sold out|on sale.*|more info|info|vip|rsvp|find tickets|get tickets|low tickets|limited|new date|rescheduled|cancelled|postponed|\d{1,2}[:.]\d{2}\s*(am|pm)?|doors.*|\d{4}|w\/.*|with .*|support.*|special guests?.*)$/i;
+
+/** US states, Canadian provinces and Australian states, as written after a city ("Santa Ana, CA"). */
+const REGIONS: Record<string, string> = Object.fromEntries([
+  ...["AL","AK","AZ","AR","CA","CO","CT","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"].map((r) => [r, "US"]),
+  ...["ON","QC","BC","AB","MB","SK","NS","NB","NL","PE"].map((r) => [r, "CA"]),
+  ...["NSW","VIC","QLD","SA","TAS","ACT","NT"].map((r) => [r, "AU"]),
+]);
+// "Hamburg, DE" is far likelier than Delaware on a European tour.
+const REGION_IS_COUNTRY = new Set(["DE"]);
+
+/**
+ * Tidies a pasted line: Markdown / Google-style links keep their text, footnote markers,
+ * bare URLs, list bullets and notes in brackets ("(Sold Out)") are dropped.
+ */
+function tidyLine(line: string): string {
+  return line
+    .replace(/\[\[\d+\]\([^)]*\)\]/g, " ") // [[1](https://…)] footnotes
+    .replace(/\[\d+\]/g, " ") // [1]
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [text](url) → text
+    .replace(/<?https?:\/\/\S+>?/g, " ") // bare links
+    .replace(/\([^)]*\)/g, " ") // (Sold Out), (New date), (w/ support)
+    .replace(/^\s*(?:[*•·▪►>+-]|\d{1,3}[.)])\s+/, "") // list bullets and numbering
+    .replace(/[ \u00a0]+/g, " ") // keep tabs: they separate spreadsheet columns
+    .trim();
+}
 
 function cleanParts(text: string): string[] {
   return text
-    .split(/\s*(?:\||—|–|\t|•|·|\s-\s|,|\/(?!\/))\s*/)
-    .map((p) => p.trim().replace(/^[-:,.\s]+|[-:,\s]+$/g, ""))
+    .split(/\s*(?:\||—|–|\t|•|·|\s-\s|,|\s\/\s|:\s|@)\s*/)
+    .map((p) => p.trim().replace(/^[-:,.\s*]+|[-:,\s*]+$/g, ""))
     .filter((p) => p && !NOISE.test(p) && !/^\d+$/.test(p));
 }
 
-/** Turns the words around a date into venue / city / country. */
-function interpret(parts: string[], defaultCountry: string): Pick<FoundDate, "venue" | "city" | "country"> {
-  let country = "";
-  const rest: string[] = [];
-  for (const p of parts) {
-    const c = !country ? countryCode(p) : null;
-    if (c) country = c;
-    else rest.push(p);
+/** Parts that could be a venue or city (not a country or state code). */
+const placeParts = (parts: string[]) => parts.filter((p) => !countryCode(p) && !REGIONS[p.toUpperCase()]).length;
+
+const MONTH_ONLY = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?$/i;
+
+/** Ticketing sites often show "JUN" and "11" on separate lines; join them into "11 JUN". */
+function mergeSplitDates(lines: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const day = lines[i + 1]?.match(/^(\d{1,2})(?:st|nd|rd|th)?$/);
+    if (MONTH_ONLY.test(lines[i]) && day) {
+      out.push(`${day[1]} ${lines[i]}`);
+      i++;
+    } else if (/^\d{1,2}$/.test(lines[i]) && MONTH_ONLY.test(lines[i + 1] ?? "")) {
+      out.push(`${lines[i]} ${lines[i + 1]}`);
+      i++;
+    } else out.push(lines[i]);
   }
-  let venue = "";
-  let city = "";
-  const venueIdx = rest.findIndex((p) => VENUE_WORDS.test(p) && !cityCountry(p));
-  if (venueIdx >= 0) {
-    venue = rest[venueIdx];
-    city = rest.find((p, i) => i !== venueIdx && !VENUE_WORDS.test(p)) ?? rest.find((_, i) => i !== venueIdx) ?? "";
-  } else if (rest.length >= 2) {
-    // "City, Venue" or "Venue, City": a known city decides; otherwise assume venue comes first.
-    if (cityCountry(rest[0])) [city, venue] = [rest[0], rest[1]];
-    else [venue, city] = [rest[0], rest[1]];
-  } else if (rest.length === 1) {
-    if (cityCountry(rest[0])) city = rest[0];
-    else venue = rest[0];
-  }
-  return { venue, city, country: country || cityCountry(city) || defaultCountry };
+  return out;
 }
 
+interface Candidate {
+  show_date: string;
+  latitude: number | null;
+  longitude: number | null;
+  parts: string[];
+  country: string;
+  /** Index into parts known to be the city / venue, when the words make it clear. */
+  city: number;
+  venue: number;
+}
+
+/** Pulls the country (or a state/province) out of the parts and notes anything that marks the city or venue. */
+function classify(show_date: string, raw: string[], coords: [number, number] | null): Candidate {
+  const parts: string[] = [];
+  let country = "";
+  let city = -1;
+  for (const p of raw) {
+    const region = REGIONS[p.toUpperCase()];
+    // "Santa Ana, CA": a state code straight after another part marks that part as the city.
+    if (/^[A-Z]{2,3}$/.test(p) && region && parts.length && !REGION_IS_COUNTRY.has(p)) {
+      if (!country) country = region;
+      city = parts.length - 1;
+      continue;
+    }
+    const c = countryCode(p);
+    if (c && !country && (parts.length || raw.length > 1)) {
+      country = c;
+      if (parts.length && city < 0) city = parts.length - 1; // "Dublin, Ireland"
+      continue;
+    }
+    parts.push(p);
+  }
+  const known = parts.findIndex((p) => cityCountry(p));
+  if (city < 0 && known >= 0) city = known;
+  const venue = parts.findIndex((p, i) => i !== city && VENUE_WORDS.test(p) && !cityCountry(p));
+  return { show_date, latitude: coords?.[0] ?? null, longitude: coords?.[1] ?? null, parts: parts.slice(0, 3), country, city, venue };
+}
+
+/**
+ * Finds tour dates in pasted text in whatever layout it arrives: one show per line
+ * ("Fri, Apr 24, 2026: Norwich – UEA", "19.06.2027 | Croke Park | Dublin") or a date line
+ * followed by venue and city lines. When a line alone can't say which part is the city and
+ * which the venue, the layout of the rest of the list decides.
+ */
 export function datesFromText(text: string, defaultCountry = "", today = new Date()): FoundDate[] {
-  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-  const out: FoundDate[] = [];
+  const lines = mergeSplitDates(text.split(/\r?\n/).map(tidyLine).filter(Boolean));
+  const found: Candidate[] = [];
   for (let i = 0; i < lines.length; i++) {
     const hit = findDateInText(lines[i], today);
     if (!hit) continue;
-    let parts = cleanParts(lines[i].replace(hit.match, " | "));
-    // Many tour pages put the date on its own line with venue and city on the next lines.
-    for (let j = i + 1; parts.length < 2 && j < lines.length && j <= i + 3; j++) {
+    let line = lines[i].replace(hit.match, " | ");
+    // Coordinates at the end of a line: "… | 51.556 | -0.2796"
+    let coords: [number, number] | null = null;
+    const geo = line.match(/[|,\t]\s*(-?\d{1,2}\.\d+)\s*[|,\t]\s*(-?\d{1,3}\.\d+)\s*$/);
+    if (geo && Math.abs(+geo[1]) <= 90 && Math.abs(+geo[2]) <= 180) {
+      coords = [+geo[1], +geo[2]];
+      line = line.slice(0, geo.index);
+    }
+    let parts = cleanParts(line);
+    // Many tour pages put the date on its own line with city and venue on the next lines.
+    for (let j = i + 1; placeParts(parts) < 2 && j < lines.length && j <= i + 4; j++) {
       if (findDateInText(lines[j], today)) break;
       parts = parts.concat(cleanParts(lines[j]));
     }
-    const { venue, city, country } = interpret(parts.slice(0, 4), defaultCountry);
-    if (!venue && !city) continue;
-    out.push({ show_date: hit.date, venue, city, country, latitude: null, longitude: null });
+    if (parts.length) found.push(classify(hit.date, parts, coords));
   }
-  return out;
+
+  // Which comes first in this list, city or venue? Count the lines that make it clear.
+  let cityFirst = 0;
+  for (const c of found) {
+    const cityAt = c.city >= 0 ? c.city : c.venue >= 0 && c.parts.length === 2 ? 1 - c.venue : -1;
+    const venueAt = c.venue >= 0 ? c.venue : c.city >= 0 && c.parts.length === 2 ? 1 - c.city : -1;
+    if (cityAt >= 0 && venueAt >= 0) cityFirst += cityAt < venueAt ? 1 : -1;
+  }
+
+  return found.map((c) => {
+    let { city, venue } = c;
+    const n = c.parts.length;
+    if (n === 1) {
+      if (city < 0 && venue < 0) {
+        if (cityCountry(c.parts[0])) city = 0;
+        else venue = 0;
+      }
+    } else {
+      if (city < 0 && venue < 0) [city, venue] = cityFirst >= 0 ? [0, 1] : [1, 0];
+      else if (city < 0) city = c.parts.findIndex((_, i) => i !== venue);
+      else if (venue < 0) venue = c.parts.findIndex((_, i) => i !== city);
+    }
+    const cityName = city >= 0 ? c.parts[city] : "";
+    return {
+      show_date: c.show_date,
+      venue: venue >= 0 ? c.parts[venue] : "",
+      city: cityName,
+      country: c.country || cityCountry(cityName) || defaultCountry,
+      latitude: c.latitude,
+      longitude: c.longitude,
+    };
+  }).filter((d) => d.venue || d.city);
 }
 
 // ---------------------------------------------------------------------------
