@@ -15,8 +15,9 @@ export interface OptInInput {
   country?: string;
   consentArtist: boolean;
   consentPromoter: boolean;
-  consentAtvenu: boolean;
   consentSnapshot: string;
+  /** Shows the fan says they're attending. */
+  shows?: Show[];
   source?: string;
   ip?: string;
   userAgent?: string;
@@ -68,6 +69,7 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
       )
       .get(activation.id, fan.id) as { id: string; pass_token: string; code: string } | undefined;
     if (existing) {
+      if (input.shows?.length) saveShows(conn, existing.id, input.shows); // adds any newly picked shows
       return { optInId: existing.id, passToken: existing.pass_token, code: existing.code, existing: true };
     }
 
@@ -97,7 +99,7 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
         passToken,
         input.consentArtist ? 1 : 0,
         input.consentPromoter ? 1 : 0,
-        input.consentAtvenu ? 1 : 0,
+        0, // consent_atvenu: retired — atVenu never contacts fans
         input.consentSnapshot,
         input.source ?? null,
         input.ip ?? null,
@@ -111,8 +113,24 @@ export function optInFan(activation: Activation, input: OptInInput): OptInResult
         input.validFrom ?? null,
         input.validUntil ?? null,
       );
+    if (input.shows?.length) saveShows(conn, optInId, input.shows);
     return { optInId, passToken, code: code.code, existing: false };
   });
+}
+
+function saveShows(conn: ReturnType<typeof db>, optInId: string, shows: Show[]) {
+  const insert = conn.prepare(
+    "INSERT OR IGNORE INTO opt_in_shows (opt_in_id, show_ref, show_date, venue, city, country) VALUES (?,?,?,?,?,?)",
+  );
+  for (const s of shows) insert.run(optInId, s.id, s.show_date, s.venue, s.city, s.country || null);
+}
+
+export type ChosenShow = Pick<Show, "show_date" | "venue" | "city" | "country"> & { show_ref: string };
+
+export function chosenShows(optInId: string): ChosenShow[] {
+  return db()
+    .prepare("SELECT show_ref, show_date, venue, city, country FROM opt_in_shows WHERE opt_in_id = ? ORDER BY show_date")
+    .all(optInId) as unknown as ChosenShow[];
 }
 
 export interface PassRecord {
@@ -152,8 +170,18 @@ export function getPassByToken(token: string): PassRecord | undefined {
 }
 
 /** Dates shown on a pass: only the holder's city when their pass is limited to it. */
+/** The shows a pass is for: the ones the fan picked, a city link's city, or the whole tour. */
 export function passShows(a: Activation, pass: PassRecord): Show[] {
   const shows = listShows(a.id);
+  const chosen = chosenShows(pass.opt_in_id);
+  if (chosen.length) {
+    const refs = new Set(chosen.map((c) => c.show_ref));
+    const current = shows.filter((s) => refs.has(s.id));
+    // If the tour dates were edited since, fall back to what the fan picked at the time.
+    return current.length
+      ? current
+      : chosen.map((c) => ({ ...c, id: c.show_ref, activation_id: a.id, country: c.country ?? "", latitude: null, longitude: null }));
+  }
   if (pass.pass_scope !== "city" || !pass.link_city) return shows;
   return shows.filter((s) => s.city === pass.link_city && s.country === pass.link_country);
 }
@@ -270,6 +298,8 @@ export interface FanRow {
   consent_artist: number;
   consent_promoter: number;
   consent_atvenu: number;
+  /** Shows the fan said they're attending. */
+  shows: ChosenShow[];
   source: string | null;
   apple_pass_at: string | null;
   google_pass_at: string | null;
@@ -288,6 +318,8 @@ export function listFans(activationId: string, search?: string): FanRow[] {
       `SELECT o.id AS opt_in_id, o.pass_token, o.role, o.recipient_group, o.organisation, o.revoked_at,
               (SELECT city FROM signup_links l WHERE l.id = o.signup_link_id) AS link_city, f.email, f.first_name, f.last_name, f.country, c.code, c.status AS code_status,
               o.consent_artist, o.consent_promoter, o.consent_atvenu, o.source,
+              (SELECT json_group_array(json_object('show_ref', show_ref, 'show_date', show_date, 'venue', venue, 'city', city, 'country', country))
+                 FROM (SELECT * FROM opt_in_shows s WHERE s.opt_in_id = o.id ORDER BY show_date)) AS shows_json,
               o.apple_pass_at, o.google_pass_at, o.email_sent_at, o.created_at AS opted_in_at,
               COUNT(r.id) AS orders, MAX(r.redeemed_at) AS last_purchase_at,
               (SELECT json_group_array(json_object('currency', currency, 'total', total))
@@ -304,8 +336,8 @@ export function listFans(activationId: string, search?: string): FanRow[] {
        GROUP BY o.id
        ORDER BY o.created_at DESC`,
     )
-    .all(activationId, like, like, like, like, like, like, like, like) as unknown as (Omit<FanRow, "spend"> & { spend_json: string })[];
-  return rows.map(({ spend_json, ...row }) => ({ ...row, spend: JSON.parse(spend_json) }));
+    .all(activationId, like, like, like, like, like, like, like, like) as unknown as (Omit<FanRow, "spend" | "shows"> & { spend_json: string; shows_json: string })[];
+  return rows.map(({ spend_json, shows_json, ...row }) => ({ ...row, spend: JSON.parse(spend_json), shows: JSON.parse(shows_json) }));
 }
 
 /** Everything held about one fan — used for GDPR subject access requests. */
@@ -317,7 +349,8 @@ export function exportFanData(email: string, organisationId: string | null = nul
   if (!fan) return null;
   const optIns = conn
     .prepare(
-      `SELECT a.artist_name, a.tour_name, a.kind, o.created_at AS opted_in_at, c.code, o.role, o.recipient_group,
+      `SELECT a.artist_name, a.tour_name, a.kind, o.created_at AS opted_in_at, c.code,
+              (SELECT group_concat(s.show_date || ' ' || s.venue || ', ' || s.city, '; ') FROM opt_in_shows s WHERE s.opt_in_id = o.id) AS shows_attending, o.role, o.recipient_group,
               o.organisation, o.revoked_at, o.consent_artist, o.consent_promoter,
               o.consent_atvenu, o.consent_snapshot, o.source, o.ip, o.user_agent, o.apple_pass_at, o.google_pass_at,
               o.email_sent_at

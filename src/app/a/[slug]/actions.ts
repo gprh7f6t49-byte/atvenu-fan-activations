@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getActivationBySlug, listShows } from "@/lib/activations";
-import { CodePoolExhaustedError, getPassByToken, optInFan } from "@/lib/fans";
+import { upcomingShows } from "@/lib/wallet/content";
+import { CodePoolExhaustedError, getPassByToken, optInFan, passShows } from "@/lib/fans";
 import { sendPassEmail } from "@/lib/email";
 import { consentCopy } from "@/lib/consent";
 import { rateLimited } from "@/lib/rate-limit";
@@ -12,13 +13,12 @@ import { rateLimited } from "@/lib/rate-limit";
 export interface OptInState {
   error?: string;
   resent?: string;
-  fieldErrors?: Partial<Record<"email" | "firstName" | "terms", string>>;
+  fieldErrors?: Partial<Record<"email" | "fullName" | "terms" | "shows", string>>;
 }
 
 const schema = z.object({
   email: z.string().trim().email("Enter a valid email address").max(254),
-  firstName: z.string().trim().min(1, "Enter your first name").max(80),
-  lastName: z.string().trim().max(80).optional(),
+  fullName: z.string().trim().min(1, "Enter your full name").max(120),
   country: z.string().trim().max(2).optional(),
   terms: z.literal("on", { message: "Please accept the offer terms to get your code" }),
 });
@@ -37,32 +37,39 @@ export async function submitOptIn(slug: string, _prev: OptInState, form: FormDat
   }
 
   const parsed = schema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) {
+  // Fans pick from the upcoming shows; at least one is needed while there are any.
+  const upcoming = upcomingShows(listShows(activation.id));
+  const picked = new Set(form.getAll("shows").map(String));
+  const shows = upcoming.filter((s) => picked.has(s.id));
+  const showsError = upcoming.length && !shows.length ? "Choose the show(s) you're going to" : undefined;
+  if (!parsed.success || showsError) {
     const fieldErrors: OptInState["fieldErrors"] = {};
-    for (const issue of parsed.error.issues) {
+    for (const issue of parsed.success ? [] : parsed.error.issues) {
       const key = issue.path[0] as keyof NonNullable<OptInState["fieldErrors"]>;
       fieldErrors[key] ??= issue.message;
     }
+    if (showsError) fieldErrors.shows = showsError;
     return { fieldErrors };
   }
+  // One "Full name" box; the first word is used to greet them ("Hi Sam").
+  const [firstName, ...rest] = parsed.data.fullName.split(/\s+/);
 
   const copy = consentCopy(activation);
   const consents = {
     artist: form.get("consent_artist") === "on",
     promoter: form.get("consent_promoter") === "on",
-    atvenu: form.get("consent_atvenu") === "on",
   };
 
   let result;
   try {
     result = optInFan(activation, {
       email: parsed.data.email,
-      firstName: parsed.data.firstName,
-      lastName: parsed.data.lastName,
+      firstName,
+      lastName: rest.join(" "),
       country: parsed.data.country,
       consentArtist: consents.artist,
       consentPromoter: consents.promoter,
-      consentAtvenu: consents.atvenu,
+      shows,
       // Exact wording shown to the fan, kept as the record of consent.
       consentSnapshot: JSON.stringify({ at: new Date().toISOString(), copy, given: consents, privacy_url: activation.privacy_url }),
       source: String(form.get("source") ?? "") || undefined,
@@ -79,7 +86,7 @@ export async function submitOptIn(slug: string, _prev: OptInState, form: FormDat
   const pass = getPassByToken(result.passToken);
   if (pass) {
     try {
-      await sendPassEmail(activation, listShows(activation.id), pass);
+      await sendPassEmail(activation, passShows(activation, pass), pass);
     } catch (err) {
       console.error("Failed to send pass email", err);
     }

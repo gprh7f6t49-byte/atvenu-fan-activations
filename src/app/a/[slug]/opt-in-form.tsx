@@ -6,12 +6,14 @@ import type { OptInState } from "./actions";
 
 interface Props {
   action: (prev: OptInState, form: FormData) => Promise<OptInState>;
-  copy: { terms: string; artist: string; promoter: string | null; atvenu: string };
+  copy: { terms: string; artist: string; promoter: string | null };
   privacyUrl: string | null;
   source: string | null;
+  /** Upcoming shows to choose from, already formatted. */
+  shows: { id: string; date: string; place: string }[];
 }
 
-export function OptInForm({ action, copy, privacyUrl, source }: Props) {
+export function OptInForm({ action, copy, privacyUrl, source, shows }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   const fe = state.fieldErrors ?? {};
 
@@ -33,14 +35,9 @@ export function OptInForm({ action, copy, privacyUrl, source }: Props) {
         </label>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="First name" error={fe.firstName}>
-          <input name="firstName" autoComplete="given-name" required className="fan-input" />
-        </Field>
-        <Field label="Last name">
-          <input name="lastName" autoComplete="family-name" placeholder="Optional" className="fan-input" />
-        </Field>
-      </div>
+      <Field label="Full name" error={fe.fullName}>
+        <input name="fullName" autoComplete="name" required className="fan-input" />
+      </Field>
       <Field label="Email" error={fe.email}>
         <input name="email" type="email" inputMode="email" autoComplete="email" required className="fan-input" />
       </Field>
@@ -54,6 +51,27 @@ export function OptInForm({ action, copy, privacyUrl, source }: Props) {
         </select>
       </Field>
 
+      {shows.length > 0 && (
+        <fieldset>
+          <legend className="mb-1 block text-xs font-semibold uppercase tracking-widest opacity-70">
+            Which show{shows.length > 1 ? "s are" : " is"} you going to?
+          </legend>
+          {shows.length > 1 && <p className="mb-2 text-xs opacity-60">Tick all that apply — your pass works at each one.</p>}
+          <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-white/20 bg-white/5 p-1.5">
+            {shows.map((s) => (
+              <label key={s.id} className="flex cursor-pointer items-center gap-3 rounded-md px-2.5 py-2 text-sm hover:bg-white/10 has-[:checked]:bg-white/15">
+                <input type="checkbox" name="shows" value={s.id} defaultChecked={shows.length === 1} className="h-5 w-5 shrink-0 accent-accent" />
+                <span className="min-w-0">
+                  <span className="block font-semibold">{s.date}</span>
+                  <span className="block truncate opacity-75">{s.place}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          {fe.shows && <span className="mt-1 block text-xs text-red-300">{fe.shows}</span>}
+        </fieldset>
+      )}
+
       <fieldset className="space-y-3 pt-2 text-sm">
         <Check name="terms" required error={fe.terms}>
           {copy.terms}{" "}
@@ -63,10 +81,9 @@ export function OptInForm({ action, copy, privacyUrl, source }: Props) {
             </a>
           )}
         </Check>
-        <p className="pt-1 text-xs uppercase tracking-widest opacity-60">Optional — you&apos;ll get your code either way</p>
+        <p className="pt-1 text-xs uppercase tracking-widest opacity-60">Optional — you&apos;ll get your pass either way</p>
         <Check name="consent_artist">{copy.artist}</Check>
         {copy.promoter && <Check name="consent_promoter">{copy.promoter}</Check>}
-        <Check name="consent_atvenu">{copy.atvenu}</Check>
       </fieldset>
 
       {state.resent && (
@@ -85,7 +102,7 @@ export function OptInForm({ action, copy, privacyUrl, source }: Props) {
         disabled={pending}
         className="w-full rounded-full bg-accent px-6 py-4 text-base font-extrabold uppercase tracking-wide text-brand transition hover:brightness-110 disabled:opacity-60"
       >
-        {pending ? "Getting your code…" : "Get my code"}
+        {pending ? "Getting your pass…" : "Claim my discount"}
       </button>
     </form>
   );

@@ -186,6 +186,17 @@ CREATE TABLE IF NOT EXISTS signup_links (
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+-- The shows a fan said they're attending (a snapshot, so it survives tour edits).
+CREATE TABLE IF NOT EXISTS opt_in_shows (
+  opt_in_id TEXT NOT NULL REFERENCES opt_ins(id) ON DELETE CASCADE,
+  show_ref TEXT NOT NULL,
+  show_date TEXT NOT NULL,
+  venue TEXT NOT NULL,
+  city TEXT NOT NULL,
+  country TEXT,
+  PRIMARY KEY (opt_in_id, show_ref)
+);
+
 CREATE TABLE IF NOT EXISTS emails (
   id TEXT PRIMARY KEY,
   opt_in_id TEXT REFERENCES opt_ins(id) ON DELETE CASCADE,

@@ -1,3 +1,4 @@
+import { formatShowDate } from "@/lib/wallet/content";
 import { requireActivation } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { listFans } from "@/lib/fans";
@@ -30,10 +31,11 @@ export default async function FansPage({ params, searchParams }: PageProps<"/adm
             <tr>
               <th className="px-4 py-3">Fan</th>
               <th className="px-3 py-3">Code</th>
+              <th className="px-3 py-3">Shows</th>
               <th className="px-3 py-3">Opted in</th>
               <th className="px-3 py-3 text-center">Apple</th>
               <th className="px-3 py-3 text-center">Google</th>
-              <th className="px-3 py-3 text-center" title="Marketing consent: artist / promoter / atVenu">Consent A·P·V</th>
+              <th className="px-3 py-3 text-center" title="Marketing consent: artist / promoter">Consent A·P</th>
               <th className="px-3 py-3 text-right">Orders</th>
               <th className="px-4 py-3 text-right">Spend</th>
             </tr>
@@ -49,18 +51,21 @@ export default async function FansPage({ params, searchParams }: PageProps<"/adm
                   {f.code}
                   {f.code_status === "redeemed" && <span className="ml-2 rounded bg-emerald-50 px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase text-emerald-700">redeemed</span>}
                 </td>
+                <td className="px-3 py-2 text-xs text-zinc-600">
+                  {f.shows.length ? f.shows.map((s) => <div key={s.show_ref} className="whitespace-nowrap">{formatShowDate(s.show_date)} · {s.city}</div>) : "—"}
+                </td>
                 <td className="px-3 py-2 text-xs text-zinc-600">{fmtDateTime(f.opted_in_at)}</td>
                 <td className="px-3 py-2 text-center"><Tick on={f.apple_pass_at} /></td>
                 <td className="px-3 py-2 text-center"><Tick on={f.google_pass_at} /></td>
                 <td className="px-3 py-2 text-center tracking-widest">
-                  <Tick on={f.consent_artist} /><Tick on={f.consent_promoter} /><Tick on={f.consent_atvenu} />
+                  <Tick on={f.consent_artist} /><Tick on={f.consent_promoter} />
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{f.orders}</td>
                 <td className="px-4 py-2 text-right tabular-nums">{f.orders ? fmtRevenue(f.spend) : "—"}</td>
               </tr>
             ))}
             {fans.length === 0 && (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500">{q ? "No matches" : "No fans yet"}</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-zinc-500">{q ? "No matches" : "No fans yet"}</td></tr>
             )}
           </tbody>
         </table>

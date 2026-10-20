@@ -3,7 +3,7 @@ import QRCode from "qrcode";
 import { config } from "./config";
 import { db, newId } from "./db";
 import type { Activation, Show } from "./activations";
-import { markPassEvent, type PassRecord } from "./fans";
+import { chosenShows, markPassEvent, type PassRecord } from "./fans";
 import { formatShowDate, redemptionInstructions } from "./wallet/content";
 import { passBadge } from "./discount";
 
@@ -27,6 +27,7 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
     a.kind === "fan"
       ? `You're receiving this because you signed up for the ${esc(a.artist_name)} fan offer.`
       : `This pass was issued to you by the ${esc(a.artist_name)} merch team. It's personal to you — please don't forward it.`;
+  const chosen = chosenShows(pass.opt_in_id).length > 0;
   const dates = shows
     .map((s) => `<tr><td style="padding:4px 12px 4px 0;color:#888">${esc(formatShowDate(s.show_date))}</td><td style="padding:4px 0">${esc(s.venue)}, ${esc(s.city)}</td></tr>`)
     .join("");
@@ -51,7 +52,7 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
       </p>
       <p style="margin:0 0 8px;font-weight:bold">How to redeem</p>
       <p style="margin:0 0 20px;color:#444">${esc(redemptionInstructions(a, pass))}</p>
-      ${dates ? `<p style="margin:0 0 8px;font-weight:bold">Tour dates</p><table role="presentation" style="font-size:14px;margin-bottom:20px">${dates}</table>` : ""}
+      ${dates ? `<p style="margin:0 0 8px;font-weight:bold">${chosen ? (shows.length > 1 ? "Your shows" : "Your show") : "Tour dates"}</p><table role="presentation" style="font-size:14px;margin-bottom:20px">${dates}</table>` : ""}
       ${a.offer_terms ? `<p style="font-size:12px;color:#888;margin:0">${esc(a.offer_terms)}</p>` : ""}
     </td></tr>
     <tr><td style="padding:16px 32px 28px;font-size:12px;color:#999">

@@ -9,7 +9,7 @@
  */
 import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { createActivation, getActivationBySlug, type Activation, type ActivationInput } from "../src/lib/activations";
+import { createActivation, getActivationBySlug, listShows, type Activation, type ActivationInput, type Show } from "../src/lib/activations";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv, toCsv } from "../src/lib/csv";
 import { db, DEFAULT_ORG_NAME } from "../src/lib/db";
 import { createOrganisation, getOrganisationByName } from "../src/lib/orgs";
@@ -83,7 +83,7 @@ if (activation) {
       "Sign up for your personal merch code and add it to Apple or Google Wallet. Show it at any official merch stand on the tour to get 15% off.",
     offer_headline: "15% off tour merch",
     offer_terms:
-      "One use per fan, valid at official merch stands on the Live '27 European Tour. Cannot be combined with other offers or exchanged for cash. Sample activation for pilot purposes.",
+      "Use at the official merch stand at each show you've chosen. Personal to you. Cannot be combined with other offers or exchanged for cash. Sample activation for pilot purposes.",
     promoter_name: "Sample Promoter Ltd",
     primary_color: "#0b0b0c",
     accent_color: "#e8c547",
@@ -97,7 +97,7 @@ if (activation) {
     discount_type: "percent",
     discount_value: 15,
     discount_currency: null,
-    single_use: 1,
+    single_use: 0,
   },
     ORG_ID,
   );
@@ -117,12 +117,15 @@ if (demo) {
   const lastNames = ["Murphy", "Walsh", "Smith", "Patel", "Jones", "Byrne", "Müller", "de Vries", "Garcia", "Dubois", "Brown", "Kelly", "Taylor", "Rossi", "Jansen"];
   const sources = ["instagram", "newsletter", "ticket-confirmation", "tiktok", null];
   const countryFor = (i: number) => pick(i % 3 === 0 ? ["IE", "NL", "DE", "FR", "ES"] : ["GB", "GB", "GB", "IE"]);
-  const fans: { code: string; show: (typeof SHOWS)[number] }[] = [];
+  const fans: { code: string; show: Show }[] = [];
+  const tourShows = listShows(activation.id);
 
   const setCreated = db().prepare("UPDATE opt_ins SET created_at = ?, apple_pass_at = ?, google_pass_at = ?, email_sent_at = ? WHERE id = ?");
   for (let i = 0; i < 180; i++) {
     const first = pick(firstNames);
     const last = pick(lastNames);
+    // Most fans pick one show; some are going to two.
+    const picked = [...new Set([pick(tourShows), ...(rand() < 0.25 ? [pick(tourShows)] : [])])];
     const r = optInFan(activation, {
       email: `${first}.${last}.${i}`.toLowerCase().replace(/[^a-z0-9.]/g, "") + "@example.com",
       firstName: first,
@@ -130,16 +133,16 @@ if (demo) {
       country: countryFor(i),
       consentArtist: rand() < 0.72,
       consentPromoter: rand() < 0.41,
-      consentAtvenu: rand() < 0.28,
       consentSnapshot: JSON.stringify({ seeded: true }),
       source: pick(sources) ?? undefined,
+      shows: picked,
     });
     // Spread sign-ups over the last 21 days, weighted towards the announcement.
     const daysAgo = Math.floor(Math.pow(rand(), 1.8) * 21);
     const created = new Date(Date.now() - daysAgo * 86_400_000 - rand() * 86_400_000).toISOString();
     const wallet = rand();
     setCreated.run(created, wallet < 0.48 ? created : null, wallet >= 0.48 && wallet < 0.8 ? created : null, created, r.optInId);
-    fans.push({ code: r.code, show: pick(SHOWS) });
+    fans.push({ code: r.code, show: picked[0] });
   }
 
   const redemptionRows = fans
@@ -249,7 +252,6 @@ if (demo) {
         issuedByAdmin: true,
         consentArtist: false,
         consentPromoter: false,
-        consentAtvenu: false,
         consentSnapshot: JSON.stringify({ seeded: true, issued_by_admin: true }),
       }),
     );
@@ -310,7 +312,6 @@ if (demo) {
       role: dept,
       consentArtist: false,
       consentPromoter: false,
-      consentAtvenu: false,
       consentSnapshot: JSON.stringify({ seeded: true, self_signup: true }),
       source: "London sign-up link",
       signupLinkId: london.id,

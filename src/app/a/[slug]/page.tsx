@@ -5,7 +5,7 @@ import { getActivationBySlug, listShows } from "@/lib/activations";
 import { brandStyle } from "@/lib/brand";
 import { canAccessOrg, getCurrentUser } from "@/lib/auth";
 import { consentCopy } from "@/lib/consent";
-import { formatShowDate } from "@/lib/wallet/content";
+import { formatShowDate, upcomingShows } from "@/lib/wallet/content";
 import { submitOptIn } from "./actions";
 import { OptInForm } from "./opt-in-form";
 
@@ -78,13 +78,14 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
             </div>
           ) : (
             <>
-              <h2 className="text-2xl font-extrabold">Claim your code</h2>
-              <p className="mb-6 mt-1 text-sm opacity-70">One personal code per fan, delivered straight to your phone.</p>
+              <h2 className="text-2xl font-extrabold">Claim Fan Discount</h2>
+              <p className="mb-6 mt-1 text-sm opacity-70">Your personal pass, delivered straight to your phone.</p>
               <OptInForm
                 action={submitOptIn.bind(null, a.slug)}
                 copy={consentCopy(a)}
                 privacyUrl={a.privacy_url}
                 source={source}
+                shows={upcomingShows(shows).map((s) => ({ id: s.id, date: formatShowDate(s.show_date), place: `${s.venue}, ${s.city}` }))}
               />
             </>
           )}

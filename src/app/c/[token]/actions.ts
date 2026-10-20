@@ -96,7 +96,6 @@ export async function submitCrewSignup(token: string, _prev: CrewFormState, form
       organisation: d.organisation || (activation.kind === "crew" ? undefined : link.city),
       consentArtist: false,
       consentPromoter: false,
-      consentAtvenu: false,
       consentSnapshot: JSON.stringify({
         at: new Date().toISOString(),
         self_signup: true,

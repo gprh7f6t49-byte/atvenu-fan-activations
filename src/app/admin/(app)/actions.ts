@@ -220,7 +220,6 @@ async function issueOne(activation: Activation, r: RecipientInput, sendEmail: bo
     issuedByAdmin: true,
     consentArtist: false,
     consentPromoter: false,
-    consentAtvenu: false,
     consentSnapshot: JSON.stringify({ at: new Date().toISOString(), issued_by_admin: true }),
   });
   if (result.existing) return null;

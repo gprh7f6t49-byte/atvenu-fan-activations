@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getActivation } from "@/lib/activations";
 import { brandStyle } from "@/lib/brand";
 import { passBadge } from "@/lib/discount";
-import { getPassByToken, passExpired, passShows } from "@/lib/fans";
+import { chosenShows, getPassByToken, passExpired, passShows } from "@/lib/fans";
 import { appleWalletEnabled } from "@/lib/wallet/apple";
 import { googleWalletEnabled } from "@/lib/wallet/google";
 import { formatShowDate, nextShow, redemptionInstructions } from "@/lib/wallet/content";
@@ -37,6 +37,7 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
   const shows = passShows(a, pass);
   const cityOnly = pass.pass_scope === "city" && pass.link_city;
   const upcoming = nextShow(shows);
+  const picked = chosenShows(pass.opt_in_id).length > 0;
   const apple = appleWalletEnabled();
   const google = googleWalletEnabled();
   const redeemed = Boolean(a.single_use) && pass.code_status === "redeemed";
@@ -88,8 +89,11 @@ export default async function PassPage({ params, searchParams }: PageProps<"/p/[
               {holderDetail && <p className="text-xs opacity-70">{holderDetail}</p>}
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-accent">{cityOnly ? "Valid in" : "Next show"}</p>
+              <p className="text-[10px] uppercase tracking-widest text-accent">{cityOnly ? "Valid in" : picked ? "Your next show" : "Next show"}</p>
               <p>{cityOnly ? pass.link_city : upcoming ? `${upcoming.city} · ${formatShowDate(upcoming.show_date)}` : "—"}</p>
+              {picked && shows.length > 1 && (
+                <p className="text-xs opacity-70">Your shows: {shows.map((s) => `${s.city} ${formatShowDate(s.show_date).replace(/ \d{4}$/, "").replace(/^\w+, /, "")}`).join(" · ")}</p>
+              )}
               {cityOnly && shows.length > 0 && (
                 <p className="text-xs opacity-70">{shows.map((s) => formatShowDate(s.show_date).replace(/ \d{4}$/, "")).join(", ")}</p>
               )}

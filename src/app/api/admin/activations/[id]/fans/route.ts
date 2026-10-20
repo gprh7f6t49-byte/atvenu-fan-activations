@@ -11,7 +11,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/admin/activatio
     first_name: f.first_name ?? "",
     last_name: f.last_name ?? "",
     ...(fan
-      ? { country: f.country ?? "" }
+      ? { country: f.country ?? "", shows: f.shows.map((s) => `${s.show_date} ${s.venue}, ${s.city}`).join("; ") }
       : { department_or_role: f.role ?? "", group: f.recipient_group ?? "", organisation: f.organisation ?? "", revoked: f.revoked_at ? "yes" : "no" }),
     promo_code: f.code,
     code_status: f.code_status,
@@ -20,7 +20,6 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/admin/activatio
       source: f.source ?? "",
       consent_artist: f.consent_artist ? "yes" : "no",
       consent_promoter: f.consent_promoter ? "yes" : "no",
-      consent_atvenu: f.consent_atvenu ? "yes" : "no",
     }),
     apple_wallet: f.apple_pass_at ? "yes" : "no",
     google_wallet: f.google_pass_at ? "yes" : "no",
