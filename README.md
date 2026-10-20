@@ -58,13 +58,18 @@ If the atVenu export includes a discount column, that figure is used instead of 
 
 ### Crew self sign-up (city links)
 
-1. **Tours → New tour**: add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the
+Every activation belongs to a tour: **New activation** asks you to pick a tour or create one, and the setup page creates
+the fan, crew and comp activations together (tick the ones you need, set each discount, optionally generate codes), all
+sharing the tour's dates, branding and images.
+
+1. **Tours → New tour** (or **New activation → Create a tour**): add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the
    tour page**: paste the artist's or promoter's tour page link (or copy the dates off the page and paste the text).
    You'll see the dates it found in an editable table, with any already on the tour unticked, and add the ones you want.
    It reads the schema.org event data most ticketing and artist sites publish, and falls back to the page text. Sites
    that block automated reading or load dates with scripts need the copy-and-paste route. Only public web addresses
    are fetched. Dates in the same city are grouped together.
-2. Create the crew activation from the tour page (**+ Crew sales**) and import its atVenu codes. Then **Go live**.
+2. **Set up activations** on the tour page: tick Crew sales (and Fan / Comps if needed), generate or later import the
+   codes, then **Go live**.
 3. **City sign-up links** tab: pick a city. You get a short URL (e.g. `/c/DEtEcCVS`) and a random 6-digit PIN.
    Options: pass valid for that city's dates only or the whole tour, when the link closes (default: the morning after
    the city's last show), and a cap on sign-ups.

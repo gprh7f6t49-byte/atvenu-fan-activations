@@ -4,17 +4,12 @@ import type { Organisation } from "@/lib/orgs";
 import type { Tour } from "@/lib/tours";
 import { formatUkDate } from "@/lib/dates";
 import { ImageField } from "./image-field";
+import { KIND_DEFAULTS } from "@/lib/discount";
 
 const showsToText = (shows: Show[]) =>
   shows
     .map((s) => [formatUkDate(s.show_date), s.venue, s.city, s.country, s.latitude ?? "", s.longitude ?? ""].join(" | ").replace(/( \| )+$/, ""))
     .join("\n");
-
-const DEFAULTS: Record<ActivationKind, { discount: number; singleUse: boolean; terms: string }> = {
-  fan: { discount: 15, singleUse: true, terms: "One use per fan. Valid at official merch stands on the tour. Not exchangeable for cash." },
-  crew: { discount: 25, singleUse: false, terms: "Crew discount for touring personnel only. Personal to the named holder — not transferable." },
-  comp: { discount: 100, singleUse: true, terms: "Comp issued by the merch team. Personal to the named holder — not transferable or exchangeable for cash." },
-};
 
 /**
  * Shared fields for the create and edit activation forms. Fan-only fields are hidden for crew / comps.
@@ -26,7 +21,7 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
   organisations?: Organisation[];
 }) {
   const fan = kind === "fan";
-  const d = DEFAULTS[kind];
+  const d = KIND_DEFAULTS[kind];
   return (
     <div className="space-y-8">
       <input type="hidden" name="kind" value={kind} />

@@ -19,7 +19,8 @@ export default async function ActivationsPage() {
       </div>
       {activations.length === 0 ? (
         <div className="card text-center text-zinc-600">
-          No activations yet. Create a fan activation, crew sales or venue &amp; management comps, then import a CSV of atVenu promo codes.
+          No activations yet. Start with <Link href="/admin/tours/new" className="font-semibold underline">a new tour</Link>: add its
+          dates, then set up the fan, crew and comp activations together.
         </div>
       ) : (
         <div className="card overflow-x-auto p-0">

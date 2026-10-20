@@ -1,11 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
-  createActivation,
-  generateSlug,
   getActivationBySlug,
   replaceShows,
   setActivationStatus,
@@ -16,7 +13,6 @@ import {
   type Show,
 } from "@/lib/activations";
 import { isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
-import { getOrganisation } from "@/lib/orgs";
 import { getTour } from "@/lib/tours";
 import { parseUkDate } from "@/lib/dates";
 import { imageFromForm } from "@/lib/uploads";
@@ -125,23 +121,6 @@ async function readActivationForm(form: FormData, existing?: Activation) {
   } catch (err) {
     return { error: (err as Error).message } as const;
   }
-}
-
-export async function createActivationAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const user = await requireUser();
-  // Clients always create in their own organisation; atVenu admins pick one.
-  const orgId = isPlatformAdmin(user) ? String(form.get("organisation_id") ?? "") : user.organisation_id;
-  if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this activation is for" };
-  const read = await readActivationForm(form);
-  if ("error" in read) return { error: read.error };
-  if (read.data.tour_id && getTour(read.data.tour_id)?.organisation_id !== orgId) {
-    return { error: "That tour belongs to a different client" };
-  }
-  if (!read.data.slug) read.data.slug = generateSlug(read.data.kind, read.data.artist_name, read.data.tour_name);
-  if (getActivationBySlug(read.data.slug)) return { error: "That slug is already in use" };
-  const id = createActivation(read.data, orgId);
-  if (!read.data.tour_id) replaceShows(id, read.shows);
-  redirect(`/admin/activations/${id}/imports?created=1`);
 }
 
 export async function updateActivationAction(id: string, _prev: FormState, form: FormData): Promise<FormState> {

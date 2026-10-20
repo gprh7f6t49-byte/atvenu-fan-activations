@@ -9,8 +9,10 @@ import { formatShowDate } from "@/lib/wallet/content";
 import { TourImport } from "./tour-import";
 import { addTourDateAction, deleteTourDateAction, pasteTourDatesAction, updateTourAction } from "../actions";
 
-export default async function TourPage({ params }: PageProps<"/admin/tours/[id]">) {
+export default async function TourPage({ params, searchParams }: PageProps<"/admin/tours/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
+  const created = typeof sp.created === "string" ? sp.created.split(",").filter((k): k is keyof typeof KIND_LABELS => k in KIND_LABELS) : [];
   const { tour } = await requireTour(id);
   const cities = listTourCities(id);
   const activations = listActivationsForTour(id);
@@ -25,6 +27,30 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
         <h1 className="mt-2 text-2xl font-bold">{tour.artist_name}</h1>
         <p className="text-sm text-zinc-500">{tour.name} · {dateCount} show(s) in {cities.length} cit{cities.length === 1 ? "y" : "ies"}</p>
       </div>
+
+      {created.length > 0 && (
+        <div className="rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
+          <p className="font-semibold">Created: {created.map((k) => KIND_LABELS[k].name).join(", ")}.</p>
+          <p className="mt-1">
+            Next: open each one below. Download generated codes for atVenu from <em>Codes &amp; sales</em>
+            {created.some((k) => k !== "fan") ? ", create crew / comp city sign-up links" : ""}
+            {created.includes("fan") ? ", and share the fan landing page once it's live" : ""}.
+          </p>
+        </div>
+      )}
+
+      {activations.length === 0 && (
+        <ol className="grid gap-3 md:grid-cols-3">
+          <Step n={1} done title="Create the tour" text={`${tour.artist_name} · ${tour.name}`} />
+          <Step n={2} done={dateCount > 0} title="Add the dates"
+            text={dateCount ? `${dateCount} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}. Add more any time.` : "Import them from the tour page below, or add them one by one."} />
+          <Step n={3} done={false} title="Choose activations" text="Fan, crew and comps together — they all share these dates.">
+            <Link href={`/admin/tours/${id}/setup`} className={dateCount ? "btn mt-3" : "btn-secondary mt-3"}>Set up activations →</Link>
+          </Step>
+        </ol>
+      )}
+
+      <TourImport tourId={id} defaultCountry={usualCountry} collapsed={dateCount > 0} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <section className="card overflow-x-auto">
@@ -92,19 +118,15 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
         </aside>
       </div>
 
-      <TourImport tourId={id} defaultCountry={usualCountry} />
-
       <section className="card">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-semibold">Activations on this tour</h2>
-          <div className="flex flex-wrap gap-2">
-            {(["fan", "crew", "comp"] as const).map((k) => (
-              <Link key={k} href={`/admin/activations/new?kind=${k}&tour=${id}`} className="btn-secondary">+ {KIND_LABELS[k].name}</Link>
-            ))}
-          </div>
+          {activations.length < 3 && (
+            <Link href={`/admin/tours/${id}/setup`} className="btn-secondary">{activations.length ? "+ Add activations" : "Set up activations"}</Link>
+          )}
         </div>
         {activations.length === 0 ? (
-          <p className="text-sm text-zinc-500">None yet. Activations created from here use this tour&apos;s dates automatically.</p>
+          <p className="text-sm text-zinc-500">None yet. Set up fan, crew and comp activations together — they use this tour&apos;s dates automatically.</p>
         ) : (
           <ul className="divide-y divide-zinc-100 text-sm">
             {activations.map((a) => (
@@ -133,5 +155,18 @@ export default async function TourPage({ params }: PageProps<"/admin/tours/[id]"
         </ActionForm>
       </section>
     </div>
+  );
+}
+
+function Step({ n, done, title, text, children }: { n: number; done: boolean; title: string; text: string; children?: React.ReactNode }) {
+  return (
+    <li className={`card ${done ? "bg-zinc-50" : "border-zinc-900"}`}>
+      <p className="flex items-center gap-2 font-semibold">
+        <span className={`grid h-6 w-6 place-items-center rounded-full text-xs ${done ? "bg-emerald-600 text-white" : "bg-zinc-900 text-white"}`}>{done ? "✓" : n}</span>
+        {title}
+      </p>
+      <p className="mt-2 text-sm text-zinc-600">{text}</p>
+      {children}
+    </li>
   );
 }

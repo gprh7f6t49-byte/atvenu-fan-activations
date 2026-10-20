@@ -24,6 +24,13 @@ export const KIND_LABELS: Record<ActivationKind, { name: string; short: string; 
   },
 };
 
+/** Starting values for each activation type; all editable. */
+export const KIND_DEFAULTS: Record<ActivationKind, { discount: number; singleUse: boolean; codes: number; terms: string }> = {
+  fan: { discount: 15, singleUse: true, codes: 500, terms: "One use per fan. Valid at official merch stands on the tour. Not exchangeable for cash." },
+  crew: { discount: 25, singleUse: false, codes: 100, terms: "Crew discount for touring personnel only. Personal to the named holder — not transferable." },
+  comp: { discount: 100, singleUse: true, codes: 50, terms: "Comp issued by the merch team. Personal to the named holder — not transferable or exchangeable for cash." },
+};
+
 export const COMP_GROUPS = ["Venue", "Management", "Label", "Promoter", "Artist guest", "Other"] as const;
 
 export function formatDiscount(a: Pick<Activation, "discount_type" | "discount_value" | "discount_currency">): string | null {

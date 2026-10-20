@@ -19,7 +19,11 @@ interface Row {
 }
 
 /** Find dates on a tour web page (or in pasted text), review them in a table, then add the ticked ones. */
-export function TourImport({ tourId, defaultCountry }: { tourId: string; defaultCountry: string }) {
+export function TourImport({ tourId, defaultCountry, collapsed }: {
+  tourId: string; defaultCountry: string;
+  /** Once the tour has dates the importer folds away, but stays in place so its messages survive. */
+  collapsed: boolean;
+}) {
   const [rows, setRows] = useState<Row[]>([]);
   const [result, setResult] = useState<{ error?: string; ok?: string }>({});
   const [state, findAction, finding] = useActionState(async (prev: ImportState, form: FormData) => {
@@ -36,7 +40,11 @@ export function TourImport({ tourId, defaultCountry }: { tourId: string; default
 
   return (
     <section className="card">
-      <h2 className="font-semibold">Import dates from the tour page</h2>
+      <details open={!collapsed || rows.length > 0} className="group">
+      <summary className="cursor-pointer list-none font-semibold">
+        Import dates from the tour page
+        {collapsed && <span className="ml-2 text-sm font-normal text-zinc-500 group-open:hidden">— add more dates from a web page or pasted text ▸</span>}
+      </summary>
       <p className="mb-4 mt-1 text-sm text-zinc-600">
         Paste a link to the artist&apos;s or promoter&apos;s tour page and we&apos;ll read the dates for you. If a site won&apos;t let us
         in, select the dates on the page, copy, and paste them into the box instead.
@@ -133,6 +141,7 @@ export function TourImport({ tourId, defaultCountry }: { tourId: string; default
           </div>
         </div>
       )}
+      </details>
       {result.ok && rows.length === 0 && <p className="mt-3 text-sm text-emerald-700">{result.ok}</p>}
     </section>
   );
