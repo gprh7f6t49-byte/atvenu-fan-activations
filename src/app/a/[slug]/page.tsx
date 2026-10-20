@@ -61,8 +61,8 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
           {a.description && <p className="mt-6 max-w-prose whitespace-pre-line opacity-70">{a.description}</p>}
 
           <ol className="mt-8 grid max-w-xl grid-cols-3 gap-3 text-sm sm:gap-5">
-            {["Sign up.", "Add your Pass to your Apple or Google Wallet.", "Show your pass at the merch stand."].map((step, i) => (
-              <li key={step} className="flex flex-col gap-2 leading-snug">
+            {["Sign up", "Add Pass to Apple or Google Wallet", "Show pass at the merch stand"].map((step, i) => (
+              <li key={step} className="flex flex-col items-center gap-2 text-center leading-snug">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-black text-brand">{i + 1}</span>
                 {step}
               </li>
