@@ -66,26 +66,46 @@ const safeLookup: LookupFunction = (hostname, options, callback) => {
     .catch((err) => callback(err, "", 0));
 };
 
-function get(url: URL): Promise<{ status: number; location?: string; type: string; body: Buffer }> {
+// Many artist and promoter sites sit behind security filters (ModSecurity, Cloudflare and the
+// like) that refuse requests which don't look like a browser, typically with 403 or 406. The
+// page is read once, as a person viewing it would, so send ordinary browser headers; if those
+// are refused, try once more with a plainer set, which some filters prefer.
+const CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";
+const HEADER_SETS: Record<string, string>[] = [
+  {
+    "User-Agent": CHROME_UA,
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-GB,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "no-cache",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "sec-ch-ua": '"Chromium";v="130", "Google Chrome";v="130", "Not?A_Brand";v="99"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+  },
+  { "User-Agent": CHROME_UA, Accept: "*/*", "Accept-Language": "en-GB,en;q=0.9" },
+];
+const REFUSED = new Set([401, 403, 406, 429, 503]);
+
+interface Got { status: number; location?: string; cookies: string[]; type: string; body: Buffer }
+
+function get(url: URL, headers: Record<string, string>): Promise<Got> {
   return new Promise((resolve, reject) => {
     const lib = url.protocol === "https:" ? https : http;
     const req = lib.get(
       url,
-      {
-        lookup: safeLookup,
-        timeout: TIMEOUT_MS,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (compatible; atVenuFanActivations/1.0; tour date import)",
-          Accept: "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.5",
-          "Accept-Language": "en-GB,en;q=0.9",
-          "Accept-Encoding": "gzip, deflate, br",
-        },
-      },
+      { lookup: safeLookup, timeout: TIMEOUT_MS, headers },
       (res) => {
         const status = res.statusCode ?? 0;
+        // Cookies set along the way (e.g. a consent or bot-check cookie before a redirect) are sent back on the next hop.
+        const cookies = (res.headers["set-cookie"] ?? []).map((c) => c.split(";")[0]);
         if (status >= 300 && status < 400) {
           res.resume();
-          return resolve({ status, location: res.headers.location, type: "", body: Buffer.alloc(0) });
+          return resolve({ status, location: res.headers.location, cookies, type: "", body: Buffer.alloc(0) });
         }
         const enc = String(res.headers["content-encoding"] ?? "");
         const stream =
@@ -101,7 +121,7 @@ function get(url: URL): Promise<{ status: number; location?: string; type: strin
             reject(new Error("That page is too large to read"));
           } else chunks.push(c);
         });
-        stream.on("end", () => resolve({ status, type: String(res.headers["content-type"] ?? ""), body: Buffer.concat(chunks) }));
+        stream.on("end", () => resolve({ status, cookies, type: String(res.headers["content-type"] ?? ""), body: Buffer.concat(chunks) }));
         stream.on("error", reject);
       },
     );
@@ -117,27 +137,41 @@ export async function fetchPage(raw: string): Promise<string> {
   } catch {
     throw new Error("That doesn't look like a web address");
   }
-  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+  const jar = new Map<string, string>();
+  let headerSet = 0;
+  for (let hop = 0; hop <= MAX_REDIRECTS + 1; hop++) {
     if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("Only http and https links can be read");
     if (url.username || url.password) throw new Error("Links with a username or password can't be read");
     if (!allowPrivate() && isIP(url.hostname.replace(/^\[|\]$/g, "")) && isPrivateAddress(url.hostname.replace(/^\[|\]$/g, ""))) {
       throw new Error("That address isn't on the public internet");
     }
-    let res;
+    let res: Got;
     try {
-      res = await get(url);
+      const cookie = [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+      res = await get(url, { ...HEADER_SETS[headerSet], ...(cookie && { Cookie: cookie }) });
     } catch (err) {
       const msg = (err as Error).message;
       throw new Error(msg.includes("public internet") || msg.includes("too") ? msg : "We couldn't open that page. Check the link, or copy the dates from the page and paste them instead.");
     }
+    for (const c of res.cookies) {
+      const i = c.indexOf("=");
+      if (i > 0) jar.set(c.slice(0, i), c.slice(i + 1));
+    }
     if (res.location) {
-      url = new URL(res.location, url);
+      const next = new URL(res.location, url);
+      if (next.host !== url.host) jar.clear();
+      url = next;
       continue;
     }
-    if (res.status === 403 || res.status === 429) {
-      throw new Error("That site blocks automated reading. Copy the dates from the page and paste them instead.");
+    if (REFUSED.has(res.status) && headerSet < HEADER_SETS.length - 1) {
+      headerSet++;
+      continue;
     }
-    if (res.status >= 400) throw new Error(`That page returned an error (${res.status}). Check the link.`);
+    if (REFUSED.has(res.status)) {
+      throw new Error(`That site doesn't allow its pages to be read automatically (error ${res.status}). Open the page, select the dates, copy them and paste them in the box below instead.`);
+    }
+    if (res.status === 404 || res.status === 410) throw new Error("That page wasn't found (404). Check the link.");
+    if (res.status >= 400) throw new Error(`That page returned an error (${res.status}). Check the link, or copy the dates from the page and paste them instead.`);
     if (res.type && !/html|text|json|xml/.test(res.type)) throw new Error("That link isn't a web page");
     return res.body.toString("utf8");
   }
