@@ -36,6 +36,8 @@ export interface Activation {
   single_use: number;
   tour_id: string | null;
   organisation_id: string | null;
+  /** Standalone event this activation belongs to (null on a tour, or for older standalone ones). */
+  group_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -67,7 +69,7 @@ export interface ActivationStats {
   revenue: { currency: string | null; total: number }[];
 }
 
-export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at" | "organisation_id">;
+export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at" | "organisation_id" | "group_id">;
 
 const KIND_SLUG_PREFIX: Record<ActivationKind, string> = { fan: "", crew: "crew-", comp: "comps-" };
 
@@ -119,12 +121,12 @@ export function getActivationBySlug(slug: string): Activation | undefined {
   return db().prepare("SELECT * FROM activations WHERE slug = ?").get(slug) as unknown as Activation | undefined;
 }
 
-export function createActivation(input: ActivationInput, organisationId: string): string {
+export function createActivation(input: ActivationInput, organisationId: string, groupId: string | null = null): string {
   const id = newId();
-  const cols = ["id", "kind", "organisation_id", ...EDITABLE_FIELDS];
+  const cols = ["id", "kind", "organisation_id", "group_id", ...EDITABLE_FIELDS];
   db()
     .prepare(`INSERT INTO activations (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-    .run(id, input.kind, organisationId, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
+    .run(id, input.kind, organisationId, input.tour_id ? null : groupId, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
   return id;
 }
 

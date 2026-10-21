@@ -238,6 +238,8 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ["activations", "hero_focus_x", "REAL NOT NULL DEFAULT 50"],
   ["activations", "hero_focus_y", "REAL NOT NULL DEFAULT 50"],
   // Where the pass is used: merch stand, bar, pop-up shop… (shapes the wording fans see).
+  // Standalone activations created together (fan + crew for one pop-up) share an event group.
+  ["activations", "group_id", "TEXT"],
   ["activations", "redeem_place", "TEXT NOT NULL DEFAULT 'merch stand'"],
   ["activations", "hero_overlay", "TEXT NOT NULL DEFAULT 'medium'"],
   ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],

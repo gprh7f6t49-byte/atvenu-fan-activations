@@ -20,7 +20,6 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </Link>
           <NavLinks links={[
             { href: "/admin", label: "Activations" },
-            { href: "/admin/tours", label: "Tours" },
             ...(platform ? [{ href: "/admin/clients", label: "Clients" }] : []),
             ...(user.role === "org_admin" ? [{ href: "/admin/team", label: "Team" }] : []),
             { href: "/admin/privacy", label: "Data requests" },

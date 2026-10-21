@@ -58,6 +58,11 @@ If the atVenu export includes a discount column, that figure is used instead of 
 
 ### Crew self sign-up (city links)
 
+The **Activations** screen lists tours and standalone events, one row each, with a chip per activation type (dot =
+live / draft / ended). Click one to open its **Overview** (summary cards, dates, details) with a tab per activation type
+(Fan / Crew / Comps), each keeping its own Results, people, sign-up links, codes and settings, plus **+ Add activation**.
+On an event's Overview, the name and dates can be edited once for all its activations.
+
 **New activation** offers two routes. **For a tour**: pick or create the tour, and the setup page creates the fan, crew and
 comp activations together. **Standalone**: for one or two shows, a pop-up shop, food & drink — enter the name, event and
 (optionally) its dates and locations, then pick the activations the same way. Every activation has **Where is the pass

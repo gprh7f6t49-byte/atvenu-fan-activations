@@ -1,5 +1,9 @@
 import { requireActivation } from "@/lib/auth";
-import { KindBadge, StatusBadge } from "@/components/status-badge";
+import { StatusBadge } from "@/components/status-badge";
+import { GroupHeader } from "@/components/group-header";
+import { listShows } from "@/lib/activations";
+import { getTour } from "@/lib/tours";
+import { groupHref, siblingActivations } from "@/lib/groups";
 import { setStatusAction } from "../../actions";
 import { config } from "@/lib/config";
 import { formatDiscount, KIND_LABELS } from "@/lib/discount";
@@ -11,19 +15,31 @@ export default async function ActivationLayout({ children, params }: LayoutProps
   const { activation: a } = await requireActivation(id);
   const landing = `${config.baseUrl}/a/${a.slug}`;
   const discount = formatDiscount(a);
+  const shows = listShows(a.id);
+  const tour = a.tour_id ? getTour(a.tour_id) : undefined;
+  const href = groupHref(a);
 
   return (
     <>
+      <GroupHeader
+        type={tour ? "tour" : "event"}
+        href={href}
+        artist={tour?.artist_name ?? a.artist_name}
+        name={tour?.name ?? a.tour_name}
+        firstDate={shows[0]?.show_date}
+        lastDate={shows.at(-1)?.show_date}
+        activations={siblingActivations(a)}
+        setupHref={`${href}/setup`}
+      />
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold">{a.artist_name}</h1>
-            <KindBadge kind={a.kind} />
+            <h2 className="text-xl font-bold">{KIND_LABELS[a.kind].name}</h2>
             <StatusBadge status={a.status} />
           </div>
           <p className="text-sm text-zinc-500">
-            {KIND_LABELS[a.kind].name} · {a.tour_name} · {a.offer_headline}
-            {discount && !a.offer_headline.includes(discount) ? ` (${discount})` : ""} · {a.single_use ? "one order per code" : "reusable all tour"}
+            {a.offer_headline}
+            {discount && !a.offer_headline.includes(discount) ? ` (${discount})` : ""} · {a.single_use ? "one order per code" : "reusable"}
           </p>
           {a.kind === "fan" && (
             <a href={`/a/${a.slug}`} target="_blank" className="mt-1 inline-block font-mono text-xs text-zinc-600 underline">

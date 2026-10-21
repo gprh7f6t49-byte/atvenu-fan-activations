@@ -13,7 +13,7 @@ import type { FormState } from "../../../actions";
 const KINDS: ActivationKind[] = ["fan", "crew", "comp"];
 
 /** Pick the activation types for a tour and set each one's discount, all in one form. */
-export function SetupForm({ action, existing, slug, artist, tourName, shows, details }: {
+export function SetupForm({ action, existing, slug, artist, tourName, shows, details, standalone = Boolean(details) }: {
   action: (prev: FormState, form: FormData) => Promise<FormState>;
   /** Types already set up on this tour, with a link to each. */
   existing: Partial<Record<ActivationKind, string>>;
@@ -23,6 +23,8 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows, det
   shows: { id: string; show_date: string; venue: string; city: string }[];
   /** Standalone activations: event details shown first (no tour). */
   details?: React.ReactNode;
+  /** Not on a tour (a standalone event), even without the details section. */
+  standalone?: boolean;
 }) {
   const available = KINDS.filter((k) => !existing[k]);
   const [picked, setPicked] = useState<ActivationKind[]>(available);
@@ -39,9 +41,9 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows, det
         </section>
       )}
       <section>
-        <h2 className="mb-1 text-lg font-bold">{n(1)}. Which activations {details ? "do you need" : "does this tour need"}?</h2>
+        <h2 className="mb-1 text-lg font-bold">{n(1)}. Which activations {standalone ? "do you need" : "does this tour need"}?</h2>
         <p className="mb-4 text-sm text-zinc-600">
-          {details ? "They share these details and dates, so you only enter them once." : "They all use this tour's dates and cities, so you only enter them once."}
+          {standalone ? "They share these details and dates, so you only enter them once." : "They all use this tour's dates and cities, so you only enter them once."}
         </p>
         <div className="mb-4 max-w-xl"><PlaceField /></div>
         <div className="grid gap-4 lg:grid-cols-3">
@@ -121,7 +123,7 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows, det
           <HeroImageEditor
             initial={{ layout: HERO_DEFAULTS.hero_layout, x: 50, y: 50, overlay: HERO_DEFAULTS.hero_overlay }}
             text={{
-              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`, tour_id: details ? null : "tour",
+              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`, tour_id: standalone ? null : "tour",
               tagline: null, description: null, primary_color: "#0B0B0C", accent_color: "#E8C547", text_color: "#FFFFFF",
             }}
             shows={shows}

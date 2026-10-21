@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { isPlatformAdmin, requireTour, requireUser } from "@/lib/auth";
+import { isPlatformAdmin, requireEvent, requireTour, requireUser } from "@/lib/auth";
 import { getOrganisation } from "@/lib/orgs";
 import { parseUkDate, formatUkDate } from "@/lib/dates";
 import { addTourDates, createTour, deleteTourDate, listTourDates, parseDateLines, updateTour } from "@/lib/tours";
@@ -14,6 +14,7 @@ import {
   getActivation,
   getActivationBySlug,
   listActivationsForTour,
+  listShows,
   replaceShows,
   type ActivationInput,
   type ActivationKind,
@@ -23,6 +24,8 @@ import { generateCodes, MAX_GENERATE, suggestPrefix } from "@/lib/codes";
 import { defaultHeadline, defaultTerms, KIND_LABELS, placeFromForm } from "@/lib/discount";
 import { imageFromForm } from "@/lib/uploads";
 import { heroFromForm } from "@/lib/hero";
+import { db, newId, tx } from "@/lib/db";
+import { eventKey } from "@/lib/groups";
 import type { FormState } from "../actions";
 
 const tourSchema = z.object({
@@ -178,6 +181,8 @@ interface SetupContext {
   /** A standalone activation's own dates and locations. */
   dates: Omit<Show, "id" | "activation_id">[];
   firstDate: string | undefined;
+  /** Standalone event these join (adding activations to an existing event). */
+  groupId?: string;
 }
 
 /**
@@ -229,6 +234,7 @@ async function createFromSetup(form: FormData, ctx: SetupContext): Promise<{ err
   const onTour = Boolean(ctx.tourId);
   const year = ctx.firstDate ? Number(ctx.firstDate.slice(0, 4)) : new Date().getFullYear();
   const created: { kind: ActivationKind; id: string }[] = [];
+  const groupId = ctx.groupId ?? newId();
   for (const p of plans) {
     const input: ActivationInput = {
       kind: p.kind,
@@ -254,7 +260,7 @@ async function createFromSetup(form: FormData, ctx: SetupContext): Promise<{ err
       discount_currency: p.discount_currency,
       single_use: p.single_use,
     };
-    const id = createActivation(input, ctx.organisationId);
+    const id = createActivation(input, ctx.organisationId, groupId);
     if (!onTour && ctx.dates.length) replaceShows(id, ctx.dates);
     if (p.codes > 0) generateCodes(id, { quantity: p.codes, prefix: suggestPrefix(getActivation(id)!, year), length: 6 });
     created.push({ kind: p.kind, id });
@@ -314,8 +320,48 @@ export async function createStandaloneAction(_prev: FormState, form: FormData): 
     firstDate: dates[0]?.show_date,
   });
   if ("error" in result) return result;
-  const first = result.created[0];
-  redirect(result.created.length === 1
-    ? `/admin/activations/${first.id}/imports?created=1`
-    : `/admin?created=${result.created.map((c) => c.kind).join(",")}`);
+  redirect(`/admin/events/${eventKey(getActivation(result.created[0].id)!)}?created=${result.created.map((c) => c.kind).join(",")}`);
+}
+
+/** Adds more activation types to a standalone event; they join its group and copy its dates. */
+export async function addToEventAction(key: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const { activations } = await requireEvent(key);
+  const first = activations[0];
+  const dates = listShows(first.id).map(({ show_date, venue, city, country, latitude, longitude }) => ({ show_date, venue, city, country, latitude, longitude }));
+  // A lone older activation becomes the event's anchor: its id is the group id.
+  if (!first.group_id) db().prepare("UPDATE activations SET group_id = ? WHERE id = ?").run(key, first.id);
+  const result = await createFromSetup(form, {
+    organisationId: first.organisation_id!,
+    tourId: null,
+    artist: first.artist_name,
+    eventName: first.tour_name,
+    existing: new Set(activations.map((a) => a.kind)),
+    dates,
+    firstDate: dates[0]?.show_date,
+    groupId: key,
+  });
+  if ("error" in result) return result;
+  redirect(`/admin/events/${key}?created=${result.created.map((c) => c.kind).join(",")}`);
+}
+
+/** Renames an event and/or replaces its dates, for every activation in it. */
+export async function updateEventAction(key: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const { activations } = await requireEvent(key);
+  const details = standaloneSchema.safeParse(Object.fromEntries(form));
+  if (!details.success) return { error: details.error.issues[0].message };
+  let dates;
+  try {
+    dates = parseDateLines(String(form.get("dates") ?? ""));
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+  tx((conn) => {
+    for (const a of activations) {
+      conn.prepare("UPDATE activations SET artist_name = ?, tour_name = ?, updated_at = ? WHERE id = ?")
+        .run(details.data.artist_name, details.data.tour_name, new Date().toISOString(), a.id);
+    }
+  });
+  for (const a of activations) replaceShows(a.id, dates);
+  revalidatePath("/admin", "layout");
+  return { ok: "Saved for all activations in this event" };
 }

@@ -8,7 +8,7 @@ export function NavLinks({ links }: { links: { href: string; label: string }[] }
   const pathname = usePathname();
   const current = (href: string) =>
     href === "/admin"
-      ? pathname === "/admin" || pathname.startsWith("/admin/activations")
+      ? pathname === "/admin" || ["/admin/activations", "/admin/tours", "/admin/events"].some((p) => pathname.startsWith(p))
       : pathname === href || pathname.startsWith(`${href}/`);
   return (
     <nav className="font-display flex flex-wrap gap-6 text-sm">

@@ -5,6 +5,7 @@ import { listTourCities } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
 import { setupActivationsAction } from "../../actions";
 import { SetupForm } from "./setup-form";
+import { GroupHeader } from "@/components/group-header";
 
 export const metadata = { title: "Set up activations · Activations" };
 
@@ -14,14 +15,16 @@ export default async function SetupActivationsPage({ params }: PageProps<"/admin
   const cities = listTourCities(id);
   const dates = cities.flatMap((c) => c.dates);
   const existing: Partial<Record<ActivationKind, string>> = {};
-  for (const a of listActivationsForTour(id)) existing[a.kind] ??= `/admin/activations/${a.id}`;
+  const activations = listActivationsForTour(id);
+  for (const a of activations) existing[a.kind] ??= `/admin/activations/${a.id}`;
   const year = dates[0]?.show_date.slice(0, 4) ?? String(new Date().getFullYear());
   const slug = `${tour.artist_name}-${year}`.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
   return (
     <>
-      <Link href={`/admin/tours/${id}`} className="text-sm text-zinc-500 hover:text-zinc-900">← {tour.artist_name} · {tour.name}</Link>
-      <h1 className="mb-1 mt-2 text-2xl font-bold">Set up activations</h1>
+      <GroupHeader type="tour" href={`/admin/tours/${id}`} artist={tour.artist_name} name={tour.name}
+        firstDate={dates[0]?.show_date} lastDate={dates.at(-1)?.show_date} activations={activations} setupHref={`/admin/tours/${id}/setup`} />
+      <h2 className="mb-1 text-xl font-bold">Add activations</h2>
       <p className="mb-6 text-sm text-zinc-600">
         {dates.length
           ? `${dates.length} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}, ${formatShowDate(dates[0].show_date)} – ${formatShowDate(dates[dates.length - 1].show_date)}.`
