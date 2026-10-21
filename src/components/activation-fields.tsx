@@ -4,6 +4,8 @@ import type { Organisation } from "@/lib/orgs";
 import type { Tour } from "@/lib/tours";
 import { formatUkDate } from "@/lib/dates";
 import { ImageField } from "./image-field";
+import { HeroImageEditor } from "./hero-image-editor";
+import { HERO_DEFAULTS } from "@/lib/hero";
 import { KIND_DEFAULTS } from "@/lib/discount";
 
 const showsToText = (shows: Show[]) =>
@@ -122,9 +124,27 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
           <Text name="tagline" label="Tagline" defaultValue={a?.tagline} placeholder="Skip the queue for the good stuff" />
           <Text name="privacy_url" label="Privacy notice URL" defaultValue={a?.privacy_url} placeholder="https://…" />
           <Area name="description" label="Description" defaultValue={a?.description} />
-          <div className="md:col-span-2 max-w-xl">
-            <ImageField name="hero_image" label="Landing page image (optional)" current={a?.hero_image_url} aspect="aspect-[16/7]"
-              hint="Shown behind the sign-up page, and on the pass if you don't add a pass image. JPG, PNG or WebP up to 10 MB, ideally 2000px wide. Use artwork the artist's team has cleared." />
+          <div className="md:col-span-2">
+            <HeroImageEditor
+              current={a?.hero_image_url}
+              initial={{
+                layout: a?.hero_layout ?? HERO_DEFAULTS.hero_layout,
+                x: a?.hero_focus_x ?? 50,
+                y: a?.hero_focus_y ?? 50,
+                overlay: a?.hero_overlay ?? HERO_DEFAULTS.hero_overlay,
+              }}
+              text={{
+                artist_name: a?.artist_name || tour?.artist_name || "Artist",
+                tour_name: a?.tour_name || tour?.name || "Tour",
+                offer_headline: a?.offer_headline || `${d.discount}% off tour merch`,
+                tagline: a?.tagline ?? null,
+                description: a?.description ?? null,
+                primary_color: a?.primary_color ?? "#0B0B0C",
+                accent_color: a?.accent_color ?? "#E8C547",
+                text_color: a?.text_color ?? "#FFFFFF",
+              }}
+              shows={shows.slice(0, 8).map((s) => ({ id: s.id, show_date: s.show_date, venue: s.venue, city: s.city }))}
+            />
           </div>
         </section>
       )}

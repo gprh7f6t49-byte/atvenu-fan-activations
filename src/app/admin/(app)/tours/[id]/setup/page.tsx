@@ -39,7 +39,8 @@ export default async function SetupActivationsPage({ params }: PageProps<"/admin
         </div>
       ) : (
       <div className="card">
-        <SetupForm action={setupActivationsAction.bind(null, id)} existing={existing} slug={slug} artist={tour.artist_name} />
+        <SetupForm action={setupActivationsAction.bind(null, id)} existing={existing} slug={slug} artist={tour.artist_name} tourName={tour.name}
+          shows={dates.slice(0, 8).map((d) => ({ id: d.id, show_date: d.show_date, venue: d.venue, city: d.city }))} />
       </div>
       )}
     </>

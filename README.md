@@ -92,6 +92,13 @@ sign-up pages keep each artist's colours and carry a small "Powered by atVenu" l
 
 ### Images
 
+**Landing page image layout** (activation Settings, or the setup page): choose **Poster** (whole image, uncropped,
+on a blurred copy of itself; the default for new activations), **Full background** (fills the first screen behind
+the text) or **Banner** (a strip across the top). Click the image to set the **focal point** that stays in view when
+it's cropped, pick a **tint** (Light / Medium / Strong; a suggestion is made from the image's brightness), and check
+the live desktop and phone previews. Small images get a warning for layouts that would stretch them. Activations
+created before this keep the Full background look.
+
 In an activation's **Settings**, upload a **Landing page image** (fan activations) and a **Pass image** (JPG, PNG or
 WebP, up to 10 MB). Uploads are checked, resized to 2400px max and stripped of metadata. They're stored next to the
 database (`uploads/` on the Railway volume). The pass image is used for the Apple Wallet strip, the Google Wallet hero,

@@ -211,3 +211,14 @@ body {
 .fan-input option {
   color: #111;
 }
+
+/* Fan-page previews inside the admin: undo the .atv colour remap and fonts. */
+.atv .atv-reset {
+  --color-white: #ffffff;
+  --color-black: #000000;
+  color-scheme: normal;
+  font-family: var(--font-sans);
+}
+.atv .atv-reset :is(h1, h2, h3) {
+  font-family: inherit;
+}

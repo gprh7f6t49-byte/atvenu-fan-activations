@@ -20,6 +20,7 @@ import {
 import { generateCodes, MAX_GENERATE, suggestPrefix } from "@/lib/codes";
 import { defaultHeadline, KIND_DEFAULTS, KIND_LABELS } from "@/lib/discount";
 import { imageFromForm } from "@/lib/uploads";
+import { heroFromForm } from "@/lib/hero";
 import type { FormState } from "../actions";
 
 const tourSchema = z.object({
@@ -222,6 +223,7 @@ export async function setupActivationsAction(tourId: string, _prev: FormState, f
       promoter_name: null,
       ...colours,
       hero_image_url: p.kind === "fan" ? heroImage : null,
+      ...heroFromForm(form),
       pass_image_url: passImage,
       privacy_url: null,
       status,

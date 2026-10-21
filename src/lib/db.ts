@@ -233,6 +233,11 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ["opt_ins", "valid_until", "TEXT"],
   // Uploaded artwork for the wallet pass (falls back to the landing page image).
   ["activations", "pass_image_url", "TEXT"],
+  // Landing page image layout. Existing activations keep the original full-background look.
+  ["activations", "hero_layout", "TEXT NOT NULL DEFAULT 'background'"],
+  ["activations", "hero_focus_x", "REAL NOT NULL DEFAULT 50"],
+  ["activations", "hero_focus_y", "REAL NOT NULL DEFAULT 50"],
+  ["activations", "hero_overlay", "TEXT NOT NULL DEFAULT 'medium'"],
   ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
   ["activations", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
   // Code batches: 'import' (from atVenu) or 'generated' here, then sent to and loaded into atVenu.

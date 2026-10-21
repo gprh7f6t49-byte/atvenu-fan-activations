@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { ImageField } from "@/components/image-field";
+import { HeroImageEditor } from "@/components/hero-image-editor";
+import { HERO_DEFAULTS } from "@/lib/hero";
 import type { ActivationKind } from "@/lib/activations";
 import { KIND_DEFAULTS, KIND_LABELS } from "@/lib/discount";
 import type { FormState } from "../../../actions";
@@ -10,12 +12,14 @@ import type { FormState } from "../../../actions";
 const KINDS: ActivationKind[] = ["fan", "crew", "comp"];
 
 /** Pick the activation types for a tour and set each one's discount, all in one form. */
-export function SetupForm({ action, existing, slug, artist }: {
+export function SetupForm({ action, existing, slug, artist, tourName, shows }: {
   action: (prev: FormState, form: FormData) => Promise<FormState>;
   /** Types already set up on this tour, with a link to each. */
   existing: Partial<Record<ActivationKind, string>>;
   slug: string;
   artist: string;
+  tourName: string;
+  shows: { id: string; show_date: string; venue: string; city: string }[];
 }) {
   const available = KINDS.filter((k) => !existing[k]);
   const [picked, setPicked] = useState<ActivationKind[]>(available);
@@ -92,17 +96,24 @@ export function SetupForm({ action, existing, slug, artist }: {
       </section>
 
       {fan && (
-        <section className="max-w-xl space-y-4">
+        <section className="space-y-4">
           <h2 className="text-lg font-bold">2. Fan landing page</h2>
-          <label className="block">
+          <label className="block max-w-xl">
             <span className="label">Landing page URL</span>
             <div className="flex items-center gap-1 text-sm text-zinc-500">
               <span>/a/</span>
               <input name="slug" defaultValue={slug} required className="input" />
             </div>
           </label>
-          <ImageField name="hero_image" label="Landing page image (optional)" aspect="aspect-[16/7]"
-            hint={`Shown behind the sign-up page. Use artwork ${artist}'s team has cleared. You can add the tagline, description and privacy link later in Settings.`} />
+          <HeroImageEditor
+            initial={{ layout: HERO_DEFAULTS.hero_layout, x: 50, y: 50, overlay: HERO_DEFAULTS.hero_overlay }}
+            text={{
+              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`,
+              tagline: null, description: null, primary_color: "#0B0B0C", accent_color: "#E8C547", text_color: "#FFFFFF",
+            }}
+            shows={shows}
+          />
+          <p className="text-xs text-zinc-500">You can add the tagline, description and privacy link later in Settings.</p>
         </section>
       )}
 

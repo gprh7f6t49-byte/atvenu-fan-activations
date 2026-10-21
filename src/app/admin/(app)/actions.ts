@@ -16,6 +16,7 @@ import { isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
 import { getTour } from "@/lib/tours";
 import { parseUkDate } from "@/lib/dates";
 import { imageFromForm } from "@/lib/uploads";
+import { heroFromForm } from "@/lib/hero";
 import { generateCodes, MAX_GENERATE, setBatchLoaded } from "@/lib/codes";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
 import { defaultHeadline } from "@/lib/discount";
@@ -117,6 +118,11 @@ async function readActivationForm(form: FormData, existing?: Activation) {
     // Crew and comp activations have no landing page, so no landing image field.
     data.hero_image_url = d.kind === "fan" ? await imageFromForm(form, "hero_image", existing?.hero_image_url ?? null) : (existing?.hero_image_url ?? null);
     data.pass_image_url = await imageFromForm(form, "pass_image", existing?.pass_image_url ?? null);
+    // Only fan activations have a landing page (and so the image editor).
+    Object.assign(data, d.kind === "fan" ? heroFromForm(form) : {
+      hero_layout: existing?.hero_layout ?? "background", hero_focus_x: existing?.hero_focus_x ?? 50,
+      hero_focus_y: existing?.hero_focus_y ?? 50, hero_overlay: existing?.hero_overlay ?? "medium",
+    });
     return { data, shows } as const;
   } catch (err) {
     return { error: (err as Error).message } as const;

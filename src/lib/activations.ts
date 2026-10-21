@@ -1,3 +1,4 @@
+import type { HeroLayout, HeroOverlay } from "./hero";
 import { db, newId, nowIso, tx } from "./db";
 
 export type ActivationStatus = "draft" | "live" | "ended";
@@ -19,6 +20,11 @@ export interface Activation {
   text_color: string;
   hero_image_url: string | null;
   pass_image_url: string | null;
+  hero_layout: HeroLayout;
+  /** Focal point of the landing image, as % from the left / top. */
+  hero_focus_x: number;
+  hero_focus_y: number;
+  hero_overlay: HeroOverlay;
   privacy_url: string | null;
   status: ActivationStatus;
   pass_expires_at: string | null;
@@ -78,6 +84,10 @@ const EDITABLE_FIELDS = [
   "text_color",
   "hero_image_url",
   "pass_image_url",
+  "hero_layout",
+  "hero_focus_x",
+  "hero_focus_y",
+  "hero_overlay",
   "privacy_url",
   "status",
   "pass_expires_at",
