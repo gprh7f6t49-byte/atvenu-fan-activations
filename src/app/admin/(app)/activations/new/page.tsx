@@ -21,11 +21,12 @@ export default async function NewActivationPage({ searchParams }: PageProps<"/ad
     <>
       <h1 className="mb-1 text-2xl font-bold">New activation</h1>
       <p className="mb-6 text-sm text-zinc-600">
-        Activations belong to a tour, so the dates and cities are entered once and shared by the fan, crew and comp passes.
+        Running on a tour? Pick or create the tour so the dates are entered once and shared by the fan, crew and comp passes.
+        For anything else — a one-off show, a pop-up shop, food &amp; drink — create a standalone activation.
       </p>
       <div className="grid gap-6 md:grid-cols-[1fr_320px]">
         <section className="card">
-          <h2 className="mb-3 font-semibold">Use an existing tour</h2>
+          <h2 className="mb-3 font-semibold">For a tour you&apos;ve set up</h2>
           {tours.length === 0 ? (
             <p className="text-sm text-zinc-500">No tours yet — create one to get started.</p>
           ) : (
@@ -51,10 +52,17 @@ export default async function NewActivationPage({ searchParams }: PageProps<"/ad
             </ul>
           )}
         </section>
-        <aside className="card self-start">
-          <h2 className="font-semibold">New tour</h2>
-          <p className="mt-1 text-sm text-zinc-600">Create the tour, add its dates (import them from the tour&apos;s web page), then pick the activations.</p>
-          <Link href="/admin/tours/new" className="btn mt-4">Create a tour →</Link>
+        <aside className="space-y-6 self-start">
+          <div className="card">
+            <h2 className="font-semibold">New tour</h2>
+            <p className="mt-1 text-sm text-zinc-600">Create the tour, add its dates (paste them in any format), then pick the activations.</p>
+            <Link href="/admin/tours/new" className="btn mt-4">Create a tour →</Link>
+          </div>
+          <div className="card">
+            <h2 className="font-semibold">Standalone activation</h2>
+            <p className="mt-1 text-sm text-zinc-600">No tour needed: one or two shows, a pop-up shop, food &amp; drink, a festival bar.</p>
+            <Link href="/admin/activations/new/standalone" className="btn-secondary mt-4">Create standalone →</Link>
+          </div>
         </aside>
       </div>
     </>

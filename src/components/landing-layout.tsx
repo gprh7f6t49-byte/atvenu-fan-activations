@@ -2,12 +2,13 @@ import type { Activation, Show } from "@/lib/activations";
 import { brandStyle } from "@/lib/brand";
 import { backgroundTint, bannerTint, focusPosition, posterTint, type HeroLayout, type HeroOverlay } from "@/lib/hero";
 import { formatShowDate } from "@/lib/wallet/content";
+import { placeOf } from "@/lib/discount";
 import { PoweredBy } from "./powered-by";
 
 export type LandingLook = Pick<
   Activation,
   "artist_name" | "tour_name" | "offer_headline" | "tagline" | "description" | "primary_color" | "accent_color" | "text_color" | "hero_image_url"
-> & { hero_layout: HeroLayout; hero_focus_x: number; hero_focus_y: number; hero_overlay: HeroOverlay };
+> & { redeem_place?: string | null; tour_id?: string | null; hero_layout: HeroLayout; hero_focus_x: number; hero_focus_y: number; hero_overlay: HeroOverlay };
 
 /**
  * The fan landing page layout. Used by the live page and, scaled down, by the settings preview,
@@ -71,7 +72,7 @@ export function LandingLayout({ a, shows, form, top, fullHeight = true }: {
           {a.description && <p className="mt-6 max-w-prose whitespace-pre-line opacity-70">{a.description}</p>}
 
           <ol className="mt-8 grid max-w-xl grid-cols-3 gap-3 text-sm @sm:gap-5">
-            {["Sign up", "Add Pass to Apple or Google Wallet", "Show pass at the merch stand"].map((step, i) => (
+            {["Sign up", "Add Pass to Apple or Google Wallet", `Show pass at the ${placeOf(a)}`].map((step, i) => (
               <li key={step} className="flex flex-col items-center gap-2 text-center leading-snug">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-xs font-black text-brand">{i + 1}</span>
                 {step}
@@ -86,7 +87,7 @@ export function LandingLayout({ a, shows, form, top, fullHeight = true }: {
 
         {shows.length > 0 && (
           <section className="@3xl:col-start-1 @3xl:row-start-2">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.3em] opacity-60">Tour dates</h2>
+            <h2 className="text-xs font-semibold uppercase tracking-[0.3em] opacity-60">{a.tour_id ? "Tour dates" : "Dates"}</h2>
             <ul className="mt-3 divide-y divide-white/10 border-y border-white/10 text-sm">
               {shows.map((s) => (
                 <li key={s.id} className="flex justify-between gap-4 py-2">

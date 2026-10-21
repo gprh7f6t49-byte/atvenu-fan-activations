@@ -53,6 +53,7 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
                 copy={consentCopy(a)}
                 privacyUrl={a.privacy_url}
                 source={source}
+                noun={a.tour_id ? "show" : "date"}
                 shows={upcomingShows(shows).map((s) => ({ id: s.id, date: formatShowDate(s.show_date), place: `${s.venue}, ${s.city}` }))}
               />
             </>

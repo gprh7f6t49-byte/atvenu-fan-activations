@@ -1,5 +1,5 @@
 import type { Activation, Show } from "../activations";
-import { formatDiscount } from "../discount";
+import { formatDiscount, placeOf, wherePhrase } from "../discount";
 
 export function nextShow(shows: Show[], now = new Date()): Show | undefined {
   const today = now.toISOString().slice(0, 10);
@@ -33,10 +33,10 @@ export function redemptionInstructions(
     : a.single_use ? "One use only." : "Valid for every show on the tour.";
   switch (a.kind) {
     case "crew":
-      return `Show this pass at any ${a.artist_name} merch stand on the ${a.tour_name}. Staff will scan the QR code (or enter the code underneath) to apply your crew discount${discount ? ` of ${discount}` : ""}. ${uses} This pass is personal to you — please don't share it.`;
+      return `Show this pass at ${wherePhrase(a)}. Staff will scan the QR code (or enter the code underneath) to apply your crew discount${discount ? ` of ${discount}` : ""}. ${uses} This pass is personal to you — please don't share it.`;
     case "comp":
-      return `Show this pass at any ${a.artist_name} merch stand on the ${a.tour_name}. Staff will scan the QR code (or enter the code underneath) to apply your comp${discount ? ` (${discount})` : ""}. ${uses} This pass is personal to you.`;
+      return `Show this pass at ${wherePhrase(a)}. Staff will scan the QR code (or enter the code underneath) to apply your comp${discount ? ` (${discount})` : ""}. ${uses} This pass is personal to you.`;
     default:
-      return `Show this pass at the official ${a.artist_name} merch stand. Staff will scan the QR code (or enter the code underneath) at checkout to apply your offer. ${a.single_use ? "One use per fan." : "Use it at every show you're going to."}`;
+      return `Show this pass at ${a.tour_id ? `the official ${a.artist_name} ${placeOf(a)}` : wherePhrase(a)}. Staff will scan the QR code (or enter the code underneath) at checkout to apply your offer. ${a.single_use ? "One use per fan." : a.tour_id ? "Use it at every show you're going to." : "Use it each time you visit."}`;
   }
 }

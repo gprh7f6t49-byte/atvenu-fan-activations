@@ -104,7 +104,7 @@ export async function submitCrewSignup(token: string, _prev: CrewFormState, form
       }),
       source: `${link.city} sign-up link`,
       signupLinkId: link.id,
-      ...passWindow(link, linkCity(activation.tour_id, link)),
+      ...passWindow(link, linkCity(activation.id, link)),
     });
   } catch (err) {
     if (err instanceof CodePoolExhaustedError) return { error: "Sorry — there are no passes left. Let the merch team know." };

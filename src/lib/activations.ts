@@ -25,6 +25,7 @@ export interface Activation {
   hero_focus_x: number;
   hero_focus_y: number;
   hero_overlay: HeroOverlay;
+  redeem_place: string;
   privacy_url: string | null;
   status: ActivationStatus;
   pass_expires_at: string | null;
@@ -88,6 +89,7 @@ const EDITABLE_FIELDS = [
   "hero_focus_x",
   "hero_focus_y",
   "hero_overlay",
+  "redeem_place",
   "privacy_url",
   "status",
   "pass_expires_at",

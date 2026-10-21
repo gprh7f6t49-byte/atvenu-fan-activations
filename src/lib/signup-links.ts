@@ -1,7 +1,8 @@
 import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
 import { config } from "./config";
 import { db, newId } from "./db";
-import { listTourCities, type TourCity } from "./tours";
+import { groupByCity, type TourCity } from "./tours";
+import { listShows } from "./activations";
 
 // Per-city self sign-up URLs for crew (and comps), circulated by WhatsApp / text.
 // Each link is protected by a 6-digit PIN; entering it sets a signed cookie for that link.
@@ -114,10 +115,14 @@ export function linkState(link: SignupLink, signups: number): LinkState {
   return "open";
 }
 
-/** The city's dates on the activation's tour (the dates a link covers). */
-export function linkCity(tourId: string | null, link: Pick<SignupLink, "city" | "country">): TourCity | undefined {
-  if (!tourId) return undefined;
-  return listTourCities(tourId).find((c) => c.city === link.city && c.country === link.country);
+/** The activation's dates grouped by city: its tour's dates, or its own for a standalone activation. */
+export function activationCities(activationId: string): TourCity[] {
+  return groupByCity(listShows(activationId));
+}
+
+/** The city's dates for this activation (the dates a link covers). */
+export function linkCity(activationId: string, link: Pick<SignupLink, "city" | "country">): TourCity | undefined {
+  return activationCities(activationId).find((c) => c.city === link.city && c.country === link.country);
 }
 
 /** Pass validity for someone signing up through this link. */

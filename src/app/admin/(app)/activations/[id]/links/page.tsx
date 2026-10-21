@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { formatDiscount } from "@/lib/discount";
 import { fmtDateTime } from "@/lib/format";
-import { linkCity, linkState, listSignupLinks, signupUrl, type LinkState } from "@/lib/signup-links";
-import { getTour, listTourCities } from "@/lib/tours";
+import { activationCities, linkCity, linkState, listSignupLinks, signupUrl, type LinkState } from "@/lib/signup-links";
 import { formatShowDate } from "@/lib/wallet/content";
 import { createLinkAction, deleteLinkAction, newPinAction, setLinkActiveAction } from "./actions";
 import { ShareButtons } from "./share-buttons";
@@ -23,18 +22,18 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
   const { id } = await params;
   const { activation: a } = await requireActivation(id);
   if (a.kind === "fan") redirect(`/admin/activations/${id}`);
-  const tour = a.tour_id ? getTour(a.tour_id) : undefined;
+  const cities = activationCities(id);
 
-  if (!tour) {
+  if (!cities.length) {
     return (
       <div className="card text-sm text-zinc-600">
-        City sign-up links use the tour&apos;s dates and cities. <Link href={`/admin/activations/${id}/settings`} className="font-semibold underline">Link this
-        activation to a tour</Link> in Settings first (or <Link href="/admin/tours/new" className="underline">create the tour</Link>).
+        Sign-up links cover a city&apos;s dates.{" "}
+        <Link href={`/admin/activations/${id}/settings`} className="font-semibold underline">Add the dates and locations</Link> in Settings first
+        {a.tour_id ? " (they come from the tour)" : ""}.
       </div>
     );
   }
 
-  const cities = listTourCities(tour.id);
   const links = listSignupLinks(id);
   const discount = formatDiscount(a);
   const who = a.kind === "crew" ? "crew" : "comp";
@@ -95,7 +94,7 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {links.map((l) => {
-            const city = linkCity(tour.id, l);
+            const city = linkCity(id, l);
             const state = linkState(l, l.signups);
             const url = signupUrl(l);
             const dates = city ? city.dates.map((d) => shortDate(d.show_date)).join(", ") : "";

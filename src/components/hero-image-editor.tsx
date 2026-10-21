@@ -3,10 +3,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HERO_LAYOUTS, HERO_OVERLAYS, suggestOverlay, type HeroLayout, type HeroOverlay } from "@/lib/hero";
 import { LandingLayout, type LandingLook } from "./landing-layout";
+import { defaultHeadline } from "@/lib/discount";
 
-type Text = Pick<LandingLook, "artist_name" | "tour_name" | "offer_headline" | "tagline" | "description" | "primary_color" | "accent_color" | "text_color">;
+type Text = Pick<LandingLook, "artist_name" | "tour_name" | "offer_headline" | "tagline" | "description" | "primary_color" | "accent_color" | "text_color"> & {
+  redeem_place?: string | null;
+  tour_id?: string | null;
+};
 // Form fields the preview follows as they're edited.
-const LIVE_FIELDS = ["primary_color", "accent_color", "text_color", "offer_headline", "tagline", "description"] as const;
+const LIVE_FIELDS = ["artist_name", "tour_name", "primary_color", "accent_color", "text_color", "offer_headline", "tagline", "description"] as const;
 
 /**
  * Landing page image: upload, layout (poster / full background / banner), focal point and tint,
@@ -39,9 +43,26 @@ export function HeroImageEditor({ current, initial, text, shows }: {
     if (!form) return;
     const read = () => {
       const next = { ...text };
+      const value = (name: string) => {
+        const el = form.elements.namedItem(name);
+        return el && "value" in el && typeof el.value === "string" ? el.value : null;
+      };
       for (const f of LIVE_FIELDS) {
-        const el = form.elements.namedItem(f);
-        if (el && "value" in el && typeof el.value === "string") (next as Record<string, unknown>)[f] = el.value || (f === "offer_headline" ? text.offer_headline : null);
+        const v = value(f);
+        if (v !== null) (next as Record<string, unknown>)[f] = v || text[f];
+      }
+      const place = value("redeem_place");
+      if (place) next.redeem_place = place === "other" ? value("redeem_place_other") || null : place;
+      // The setup page has no headline box: show the headline the fan discount will get.
+      if (value("offer_headline") === null && value("fan_discount_value") !== null) {
+        next.offer_headline = defaultHeadline({
+          kind: "fan",
+          discount_type: value("fan_discount_type") === "amount" ? "amount" : "percent",
+          discount_value: Number(value("fan_discount_value")) || 0,
+          discount_currency: value("fan_discount_currency") || null,
+          redeem_place: next.redeem_place,
+          tour_id: text.tour_id,
+        });
       }
       setLive(next);
     };

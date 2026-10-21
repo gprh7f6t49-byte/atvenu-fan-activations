@@ -58,8 +58,11 @@ If the atVenu export includes a discount column, that figure is used instead of 
 
 ### Crew self sign-up (city links)
 
-Every activation belongs to a tour: **New activation** asks you to pick a tour or create one, and the setup page creates
-the fan, crew and comp activations together (tick the ones you need, set each discount, optionally generate codes), all
+**New activation** offers two routes. **For a tour**: pick or create the tour, and the setup page creates the fan, crew and
+comp activations together. **Standalone**: for one or two shows, a pop-up shop, food & drink — enter the name, event and
+(optionally) its dates and locations, then pick the activations the same way. Every activation has **Where is the pass
+used?** (merch stand, pop-up shop, bar, food & drink stalls, or your own words), which shapes the wording on the landing
+page, passes and emails. On the tour route, the setup page creates them (tick the ones you need, set each discount, optionally generate codes), all
 sharing the tour's dates, branding and images.
 
 1. **Tours → New tour** (or **New activation → Create a tour**): add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the

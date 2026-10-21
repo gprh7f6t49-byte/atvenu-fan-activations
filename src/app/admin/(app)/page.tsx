@@ -7,8 +7,9 @@ import { fmtInt, fmtPct, fmtRevenue } from "@/lib/format";
 
 export const metadata = { title: "Activations" };
 
-export default async function ActivationsPage() {
+export default async function ActivationsPage({ searchParams }: PageProps<"/admin">) {
   const user = await requireUser();
+  const { created } = await searchParams;
   const platform = isPlatformAdmin(user);
   const activations = listActivations(orgScope(user));
   return (
@@ -17,10 +18,15 @@ export default async function ActivationsPage() {
         <h1 className="text-2xl font-bold">Activations</h1>
         <Link href="/admin/activations/new" className="btn">New activation</Link>
       </div>
+      {typeof created === "string" && (
+        <div className="mb-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
+          Created {created.split(",").length} activations. Open each one to download its codes for atVenu{created.includes("fan") ? " and share the fan page once it's live" : ""}.
+        </div>
+      )}
       {activations.length === 0 ? (
         <div className="card text-center text-zinc-600">
-          No activations yet. Start with <Link href="/admin/tours/new" className="font-semibold underline">a new tour</Link>: add its
-          dates, then set up the fan, crew and comp activations together.
+          No activations yet. <Link href="/admin/activations/new" className="font-semibold underline">Create one</Link> for a tour, or
+          standalone for a one-off show, pop-up shop or food &amp; drink.
         </div>
       ) : (
         <div className="card overflow-x-auto p-0">

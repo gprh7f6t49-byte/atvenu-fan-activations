@@ -7,7 +7,7 @@ import {
   getRedemptionsByVenue,
 } from "@/lib/activations";
 import { DailyBars, Funnel, StatTile } from "@/components/charts";
-import { KIND_LABELS } from "@/lib/discount";
+import { KIND_LABELS, placeOf } from "@/lib/discount";
 import { fmtInt, fmtMoney, fmtPct, fmtRevenue } from "@/lib/format";
 
 function Money({ rows }: { rows: { currency: string | null; total: number }[] }) {
@@ -66,7 +66,7 @@ export default async function ResultsPage({ params }: PageProps<"/admin/activati
           <Funnel steps={[
             { label: fan ? "Opted in" : "Passes issued", value: s.opt_ins },
             { label: "Added pass to wallet", value: walletAdds },
-            { label: "Used at merch stand", value: s.redeemed_fans },
+            { label: `Used at the ${placeOf(a)}`, value: s.redeemed_fans },
           ]} />
           {s.unmatched_redemptions > 0 && (
             <p className="mt-4 text-xs text-zinc-500">

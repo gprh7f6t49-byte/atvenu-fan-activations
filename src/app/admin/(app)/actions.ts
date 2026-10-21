@@ -19,7 +19,7 @@ import { imageFromForm } from "@/lib/uploads";
 import { heroFromForm } from "@/lib/hero";
 import { generateCodes, MAX_GENERATE, setBatchLoaded } from "@/lib/codes";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
-import { defaultHeadline } from "@/lib/discount";
+import { defaultHeadline, placeFromForm } from "@/lib/discount";
 import { sendPassEmail } from "@/lib/email";
 import {
   CodePoolExhaustedError,
@@ -113,7 +113,8 @@ async function readActivationForm(form: FormData, existing?: Activation) {
   }
   try {
     const shows = parseShows(String(form.get("shows") ?? ""));
-    const data = { ...d, offer_headline: d.offer_headline || defaultHeadline(d), pass_expires_at: passExpires } as ActivationInput;
+    const redeem_place = placeFromForm(form);
+    const data = { ...d, redeem_place, offer_headline: d.offer_headline || defaultHeadline({ ...d, redeem_place }), pass_expires_at: passExpires } as ActivationInput;
     if (data.discount_type === "percent") data.discount_currency = null;
     // Crew and comp activations have no landing page, so no landing image field.
     data.hero_image_url = d.kind === "fan" ? await imageFromForm(form, "hero_image", existing?.hero_image_url ?? null) : (existing?.hero_image_url ?? null);

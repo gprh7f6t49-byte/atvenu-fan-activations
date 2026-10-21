@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireActivation } from "@/lib/auth";
 import { createSignupLink, deleteSignupLink, getSignupLink, regeneratePin, setLinkActive } from "@/lib/signup-links";
-import { listTourCities } from "@/lib/tours";
+import { activationCities } from "@/lib/signup-links";
 import type { FormState } from "../../../actions";
 
 const schema = z.object({
@@ -18,12 +18,12 @@ const schema = z.object({
 
 export async function createLinkAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const { activation: a } = await requireActivation(activationId);
-  if (a.kind === "fan" || !a.tour_id) return { error: "Link this activation to a tour first" };
+  if (a.kind === "fan") return { error: "Fan activations use their landing page instead" };
   const parsed = schema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const closes = parsed.data.expires_at ? parseUkDate(parsed.data.expires_at) : null;
   if (parsed.data.expires_at && !closes) return { error: "Enter the closing date as DD-MM-YYYY, e.g. 13-06-2027" };
-  const city = listTourCities(a.tour_id).find((c) => `${c.city}|${c.country}` === parsed.data.city);
+  const city = activationCities(a.id).find((c) => `${c.city}|${c.country}` === parsed.data.city);
   if (!city) return { error: "That city isn't on the tour" };
   const link = createSignupLink({
     activationId,

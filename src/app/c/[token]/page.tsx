@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { getActivation } from "@/lib/activations";
 import { brandStyle } from "@/lib/brand";
-import { CREW_DEPARTMENTS, formatDiscount } from "@/lib/discount";
+import { CREW_DEPARTMENTS, formatDiscount, placeOf } from "@/lib/discount";
 import { formatShowDate } from "@/lib/wallet/content";
 import { accessCookieName, countSignups, getSignupLinkByToken, hasAccess, linkCity, linkState } from "@/lib/signup-links";
 import { submitCrewSignup, submitPin } from "./actions";
@@ -21,7 +21,7 @@ export default async function CrewSignupPage({ params }: PageProps<"/c/[token]">
   const a = getActivation(link.activation_id);
   if (!a || a.kind === "fan") notFound();
 
-  const city = linkCity(a.tour_id, link);
+  const city = linkCity(a.id, link);
   const state = a.status === "draft" ? "not-open" : a.status === "ended" ? "closed" : linkState(link, countSignups(link.id));
   const unlocked = hasAccess(link, (await cookies()).get(accessCookieName(link))?.value);
   const discount = formatDiscount(a);
@@ -42,7 +42,7 @@ export default async function CrewSignupPage({ params }: PageProps<"/c/[token]">
         )}
         <p className="mt-4 text-sm opacity-80">
           {crew ? "Working on the show? " : ""}Sign up for your {crew ? "crew" : "comp"} merch pass
-          {discount ? ` — ${discount}` : ""} at the merch stand
+          {discount ? ` — ${discount}` : ""} at the {placeOf(a)}
           {link.pass_scope === "city" ? `, valid for the ${link.city} ${city && city.dates.length > 1 ? "dates" : "date"}` : " for the whole tour"}.
         </p>
 

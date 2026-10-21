@@ -41,7 +41,7 @@ export async function submitOptIn(slug: string, _prev: OptInState, form: FormDat
   const upcoming = upcomingShows(listShows(activation.id));
   const picked = new Set(form.getAll("shows").map(String));
   const shows = upcoming.filter((s) => picked.has(s.id));
-  const showsError = upcoming.length && !shows.length ? "Choose the show(s) you're going to" : undefined;
+  const showsError = upcoming.length && !shows.length ? activation.tour_id ? "Choose the show(s) you're going to" : "Choose the date(s) you're coming" : undefined;
   if (!parsed.success || showsError) {
     const fieldErrors: OptInState["fieldErrors"] = {};
     for (const issue of parsed.success ? [] : parsed.error.issues) {

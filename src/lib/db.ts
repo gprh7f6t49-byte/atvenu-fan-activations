@@ -237,6 +237,8 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   ["activations", "hero_layout", "TEXT NOT NULL DEFAULT 'background'"],
   ["activations", "hero_focus_x", "REAL NOT NULL DEFAULT 50"],
   ["activations", "hero_focus_y", "REAL NOT NULL DEFAULT 50"],
+  // Where the pass is used: merch stand, bar, pop-up shop… (shapes the wording fans see).
+  ["activations", "redeem_place", "TEXT NOT NULL DEFAULT 'merch stand'"],
   ["activations", "hero_overlay", "TEXT NOT NULL DEFAULT 'medium'"],
   ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
   ["activations", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],

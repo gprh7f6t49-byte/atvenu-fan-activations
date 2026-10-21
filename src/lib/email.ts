@@ -5,7 +5,7 @@ import { db, newId } from "./db";
 import type { Activation, Show } from "./activations";
 import { chosenShows, markPassEvent, type PassRecord } from "./fans";
 import { formatShowDate, redemptionInstructions } from "./wallet/content";
-import { passBadge } from "./discount";
+import { passBadge, placeOf, wherePhrase } from "./discount";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -21,8 +21,8 @@ function renderPassEmail(a: Activation, shows: Show[], pass: PassRecord) {
     : null;
   const intro =
     a.kind === "fan"
-      ? "You're in. Here's your personal code — add it to your phone's wallet so it's ready at the merch stand."
-      : `Here's your ${a.kind === "crew" ? "crew" : "comp"} pass for the ${esc(a.tour_name)}. Add it to your phone's wallet and show it at any merch stand.`;
+      ? `You're in. Here's your personal pass — add it to your phone's wallet so it's ready at the ${esc(placeOf(a))}.`
+      : `Here's your ${a.kind === "crew" ? "crew" : "comp"} pass for the ${esc(a.tour_name)}. Add it to your phone's wallet and show it at ${esc(wherePhrase(a))}.`;
   const footer =
     a.kind === "fan"
       ? `You're receiving this because you signed up for the ${esc(a.artist_name)} fan offer.`

@@ -89,7 +89,7 @@ if (activation) {
     primary_color: "#0b0b0c",
     accent_color: "#e8c547",
     text_color: "#ffffff",
-    hero_image_url: null, pass_image_url: null, ...HERO_DEFAULTS,
+    hero_image_url: null, pass_image_url: null, ...HERO_DEFAULTS, redeem_place: "merch stand",
     privacy_url: "https://www.atvenu.com/privacy",
     status: "live",
     pass_expires_at: "2027-07-31T23:59:59.000Z",
@@ -188,7 +188,7 @@ const crew = ensureActivation({
   single_use: 0,
   status: "live",
   pass_expires_at: "2027-07-31T23:59:59.000Z",
-  tagline: null, description: null, promoter_name: null, hero_image_url: null, pass_image_url: null, ...HERO_DEFAULTS, privacy_url: null,
+  tagline: null, description: null, promoter_name: null, hero_image_url: null, pass_image_url: null, ...HERO_DEFAULTS, redeem_place: "merch stand", privacy_url: null,
 });
 const crewCodesCsv = toCsv(makeCodes(120, "CREW27").map((code) => ({ "Promo Code": code, Discount: "25%", "Max Uses": "Unlimited" })));
 writeFileSync(path.join(samples, "crew-codes.csv"), crewCodesCsv);
@@ -220,7 +220,7 @@ const comps = ensureActivation({
   single_use: 1,
   status: "live",
   pass_expires_at: "2027-07-31T23:59:59.000Z",
-  tagline: null, description: null, promoter_name: null, hero_image_url: null, pass_image_url: null, ...HERO_DEFAULTS, privacy_url: null,
+  tagline: null, description: null, promoter_name: null, hero_image_url: null, pass_image_url: null, ...HERO_DEFAULTS, redeem_place: "merch stand", privacy_url: null,
 });
 const compCodesCsv = toCsv(makeCodes(80, "COMP27").map((code) => ({ "Promo Code": code, Discount: "40.00", "Max Uses": 1 })));
 writeFileSync(path.join(samples, "comp-codes.csv"), compCodesCsv);

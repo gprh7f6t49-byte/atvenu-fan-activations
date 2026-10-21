@@ -4,7 +4,7 @@ import type { PassRecord } from "../fans";
 import { appleWalletConfig, config } from "../config";
 import { iconImage, logoImage, rgbString, stripImage } from "./images";
 import { formatShowDate, nextShow, redemptionInstructions } from "./content";
-import { passBadge } from "../discount";
+import { passBadge, placeOf } from "../discount";
 
 export const appleWalletEnabled = () => appleWalletConfig() !== null;
 
@@ -87,7 +87,7 @@ export async function buildApplePass(a: Activation, shows: Show[], pass: PassRec
       ...located.map((s) => ({
         latitude: s.latitude!,
         longitude: s.longitude!,
-        relevantText: `${a.artist_name} tonight — show your pass at the merch stand`,
+        relevantText: `${a.artist_name} tonight — show your pass at the ${placeOf(a)}`,
       })),
     );
   }

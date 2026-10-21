@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { ImageField } from "@/components/image-field";
 import { HeroImageEditor } from "@/components/hero-image-editor";
+import { PlaceField } from "@/components/place-field";
 import { HERO_DEFAULTS } from "@/lib/hero";
 import type { ActivationKind } from "@/lib/activations";
 import { KIND_DEFAULTS, KIND_LABELS } from "@/lib/discount";
@@ -12,7 +13,7 @@ import type { FormState } from "../../../actions";
 const KINDS: ActivationKind[] = ["fan", "crew", "comp"];
 
 /** Pick the activation types for a tour and set each one's discount, all in one form. */
-export function SetupForm({ action, existing, slug, artist, tourName, shows }: {
+export function SetupForm({ action, existing, slug, artist, tourName, shows, details }: {
   action: (prev: FormState, form: FormData) => Promise<FormState>;
   /** Types already set up on this tour, with a link to each. */
   existing: Partial<Record<ActivationKind, string>>;
@@ -20,17 +21,29 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows }: {
   artist: string;
   tourName: string;
   shows: { id: string; show_date: string; venue: string; city: string }[];
+  /** Standalone activations: event details shown first (no tour). */
+  details?: React.ReactNode;
 }) {
   const available = KINDS.filter((k) => !existing[k]);
   const [picked, setPicked] = useState<ActivationKind[]>(available);
   const toggle = (k: ActivationKind, on: boolean) => setPicked((p) => (on ? [...p, k] : p.filter((x) => x !== k)));
   const fan = picked.includes("fan");
+  const n = (i: number) => i + (details ? 1 : 0); // section numbers
 
   return (
     <ActionForm action={action} submitLabel={`Create ${picked.length || ""} activation${picked.length === 1 ? "" : "s"}`} pendingLabel="Creating…" className="space-y-8">
+      {details && (
+        <section className="space-y-4">
+          <h2 className="text-lg font-bold">1. Event details</h2>
+          {details}
+        </section>
+      )}
       <section>
-        <h2 className="mb-1 text-lg font-bold">1. Which activations does this tour need?</h2>
-        <p className="mb-4 text-sm text-zinc-600">They all use this tour&apos;s dates and cities, so you only enter them once.</p>
+        <h2 className="mb-1 text-lg font-bold">{n(1)}. Which activations {details ? "do you need" : "does this tour need"}?</h2>
+        <p className="mb-4 text-sm text-zinc-600">
+          {details ? "They share these details and dates, so you only enter them once." : "They all use this tour's dates and cities, so you only enter them once."}
+        </p>
+        <div className="mb-4 max-w-xl"><PlaceField /></div>
         <div className="grid gap-4 lg:grid-cols-3">
           {KINDS.map((k) => {
             const d = KIND_DEFAULTS[k];
@@ -97,18 +110,18 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows }: {
 
       {fan && (
         <section className="space-y-4">
-          <h2 className="text-lg font-bold">2. Fan landing page</h2>
+          <h2 className="text-lg font-bold">{n(2)}. Fan landing page</h2>
           <label className="block max-w-xl">
             <span className="label">Landing page URL</span>
             <div className="flex items-center gap-1 text-sm text-zinc-500">
               <span>/a/</span>
-              <input name="slug" defaultValue={slug} required className="input" />
+              <input name="slug" defaultValue={slug} required={!details} placeholder={details ? "Leave blank to create one from the name" : undefined} className="input" />
             </div>
           </label>
           <HeroImageEditor
             initial={{ layout: HERO_DEFAULTS.hero_layout, x: 50, y: 50, overlay: HERO_DEFAULTS.hero_overlay }}
             text={{
-              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`,
+              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`, tour_id: details ? null : "tour",
               tagline: null, description: null, primary_color: "#0B0B0C", accent_color: "#E8C547", text_color: "#FFFFFF",
             }}
             shows={shows}
@@ -118,7 +131,7 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows }: {
       )}
 
       <section className="space-y-4">
-        <h2 className="text-lg font-bold">{fan ? "3" : "2"}. Pass look</h2>
+        <h2 className="text-lg font-bold">{n(fan ? 3 : 2)}. Pass look</h2>
         <p className="-mt-2 text-sm text-zinc-600">Shared by every activation you create here; each can be changed later.</p>
         <div className="grid max-w-xl grid-cols-3 gap-4">
           <Color name="primary_color" label="Background" value="#0B0B0C" />

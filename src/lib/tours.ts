@@ -97,8 +97,13 @@ export function deleteTourDate(tourId: string, dateId: string): void {
 
 /** Tour dates grouped by city — a city can have several dates (e.g. two nights at Wembley). */
 export function listTourCities(tourId: string): TourCity[] {
+  return groupByCity(listTourDates(tourId));
+}
+
+/** Groups any list of dates (a tour's, or a standalone activation's own) by city. */
+export function groupByCity(dates: Omit<TourDate, "tour_id">[]): TourCity[] {
   const byCity = new Map<string, TourCity>();
-  for (const d of listTourDates(tourId)) {
+  for (const d of dates as TourDate[]) {
     const key = `${d.city}|${d.country}`;
     const c = byCity.get(key) ?? { city: d.city, country: d.country, first_date: d.show_date, last_date: d.show_date, dates: [] };
     c.dates.push(d);
