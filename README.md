@@ -75,15 +75,15 @@ Existing data converts automatically: tours become Tour campaigns, standalone ac
 links redirect), and bar / food & drink offers are marked as food & drink.
 
 **Deleting:** an activation can be deleted from its Settings tab (type its name to confirm). This removes its passes,
-codes, sign-up links and imported sales, and anyone left with no passes. A tour can be deleted only once all its
-activations are gone; a standalone event goes with its last activation. Only client admins (and atVenu admins) can
-delete. **Renaming:** use **Rename** next to a tour or event's title.
+codes, sign-up links and imported sales, and anyone left with no passes. A campaign can be deleted (from its Overview) only
+once all its activations are gone. Only client admins (and atVenu admins) can
+delete. **Renaming:** use **Rename** next to a campaign's title.
 
 **Change log** (menu): who created, edited, renamed, launched, ended or deleted tours, events, activations, dates,
 codes, sales imports and sign-up links, with what changed (e.g. "Discount: 15 → 20"). Searchable, filterable per tour /
 event (each Overview shows its recent changes) and downloadable as CSV.
 
-1. **Tours → New tour** (or **New activation → Create a tour**): add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the
+1. **New campaign → Tour** (or Festival / Event): add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the
    tour page**: paste the artist's or promoter's tour page link (or copy the dates off the page and paste the text).
    You'll see the dates it found in an editable table, with any already on the tour unticked, and add the ones you want.
    It reads the schema.org event data most ticketing and artist sites publish, and falls back to the page text. Sites
