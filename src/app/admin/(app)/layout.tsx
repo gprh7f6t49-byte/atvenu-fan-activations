@@ -22,6 +22,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             { href: "/admin", label: "Activations" },
             ...(platform ? [{ href: "/admin/clients", label: "Clients" }] : []),
             ...(user.role === "org_admin" ? [{ href: "/admin/team", label: "Team" }] : []),
+            { href: "/admin/changes", label: "Change log" },
             { href: "/admin/privacy", label: "Data requests" },
           ]} />
           <div className="ml-auto flex items-center gap-4 text-sm">

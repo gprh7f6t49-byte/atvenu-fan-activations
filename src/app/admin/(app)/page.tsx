@@ -12,7 +12,7 @@ const DOT = { live: "bg-emerald-600", draft: "bg-zinc-400", ended: "bg-amber-700
 /** Tours and standalone events. Each opens an overview with a tab per activation type. */
 export default async function ActivationsPage({ searchParams }: PageProps<"/admin">) {
   const user = await requireUser();
-  const { created } = await searchParams;
+  const { created, deleted } = await searchParams;
   const platform = isPlatformAdmin(user);
   const groups = listGroups(orgScope(user));
   const dates = (f: string | null, l: string | null) =>
@@ -27,6 +27,11 @@ export default async function ActivationsPage({ searchParams }: PageProps<"/admi
       {typeof created === "string" && (
         <div className="mb-6 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
           Created {created.split(",").length} activations. Open each one to download its codes for atVenu{created.includes("fan") ? " and share the fan page once it's live" : ""}.
+        </div>
+      )}
+      {typeof deleted === "string" && (
+        <div className="mb-6 rounded-lg bg-zinc-100 px-4 py-3 text-sm ring-1 ring-zinc-300">
+          {deleted === "tour" ? "Tour deleted." : "Activation deleted."} It&apos;s recorded in the <Link href="/admin/changes" className="underline">change log</Link>.
         </div>
       )}
       {groups.length === 0 ? (

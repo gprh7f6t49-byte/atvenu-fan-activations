@@ -75,6 +75,14 @@ export function updateTour(id: string, input: { artist_name: string; name: strin
   });
 }
 
+/** Deletes a tour and its dates. Refuses while activations still use it. */
+export function deleteTour(id: string): { error?: string } {
+  const n = (db().prepare("SELECT COUNT(*) AS n FROM activations WHERE tour_id = ?").get(id) as { n: number }).n;
+  if (n) return { error: `Delete this tour's ${n} activation${n === 1 ? "" : "s"} first` };
+  db().prepare("DELETE FROM tours WHERE id = ?").run(id);
+  return {};
+}
+
 export function listTourDates(tourId: string): TourDate[] {
   return db()
     .prepare("SELECT * FROM tour_dates WHERE tour_id = ? ORDER BY show_date, city")

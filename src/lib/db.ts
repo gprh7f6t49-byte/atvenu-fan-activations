@@ -197,6 +197,25 @@ CREATE TABLE IF NOT EXISTS opt_in_shows (
   PRIMARY KEY (opt_in_id, show_ref)
 );
 
+-- Change log: who created, edited or deleted tours, events and activations.
+CREATE TABLE IF NOT EXISTS changes (
+  id TEXT PRIMARY KEY,
+  at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  user_id TEXT,
+  user_email TEXT,
+  user_name TEXT,
+  organisation_id TEXT,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  entity_name TEXT,
+  group_type TEXT,
+  group_id TEXT,
+  details TEXT
+);
+CREATE INDEX IF NOT EXISTS changes_org ON changes(organisation_id, at);
+CREATE INDEX IF NOT EXISTS changes_group ON changes(group_id, at);
+
 CREATE TABLE IF NOT EXISTS emails (
   id TEXT PRIMARY KEY,
   opt_in_id TEXT REFERENCES opt_ins(id) ON DELETE CASCADE,

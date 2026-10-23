@@ -102,6 +102,10 @@ export async function requireEvent(key: string): Promise<{ user: PublicUser; act
   return { user, activations };
 }
 
+/** Deleting tours and activations is for client admins (and atVenu admins). */
+export const canDelete = (user: Pick<PublicUser, "role" | "organisation_id">, orgId: string | null) =>
+  isPlatformAdmin(user) || (user.role === "org_admin" && user.organisation_id === orgId);
+
 export async function requireTour(id: string): Promise<{ user: PublicUser; tour: Tour }> {
   const user = await requireUser();
   const tour = getTour(id);

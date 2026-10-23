@@ -149,6 +149,21 @@ export function updateActivation(id: string, input: ActivationInput): void {
     .run(...EDITABLE_FIELDS.map((f) => input[f] ?? null), nowIso(), id);
 }
 
+/**
+ * Deletes an activation with its codes, passes, sign-up links, emails and imported sales.
+ * People left with no passes anywhere are removed too (their data was only held for this).
+ */
+export function deleteActivation(id: string): void {
+  tx((conn) => {
+    const fans = conn.prepare("SELECT DISTINCT fan_id FROM opt_ins WHERE activation_id = ?").all(id) as { fan_id: string }[];
+    conn.prepare("DELETE FROM opt_ins WHERE activation_id = ?").run(id);
+    conn.prepare("DELETE FROM redemptions WHERE activation_id = ?").run(id);
+    conn.prepare("DELETE FROM activations WHERE id = ?").run(id);
+    const orphan = conn.prepare("DELETE FROM fans WHERE id = ? AND NOT EXISTS (SELECT 1 FROM opt_ins WHERE fan_id = ?)");
+    for (const f of fans) orphan.run(f.fan_id, f.fan_id);
+  });
+}
+
 export function setActivationStatus(id: string, status: ActivationStatus): void {
   db().prepare("UPDATE activations SET status = ?, updated_at = ? WHERE id = ?").run(status, nowIso(), id);
 }

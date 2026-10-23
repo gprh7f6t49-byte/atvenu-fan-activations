@@ -1,9 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import {
+  deleteActivation,
   getActivationBySlug,
+  getActivationStats,
+  listShows,
   replaceShows,
   setActivationStatus,
   updateActivation,
@@ -12,7 +16,10 @@ import {
   type ActivationStatus,
   type Show,
 } from "@/lib/activations";
-import { isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
+import { canDelete, isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
+import { activationGroup, activationName, describeChanges, recordActivationChange, recordChange } from "@/lib/audit";
+import { groupHref, siblingActivations } from "@/lib/groups";
+import { KIND_LABELS } from "@/lib/discount";
 import { getTour } from "@/lib/tours";
 import { parseUkDate } from "@/lib/dates";
 import { imageFromForm } from "@/lib/uploads";
@@ -130,8 +137,17 @@ async function readActivationForm(form: FormData, existing?: Activation) {
   }
 }
 
+const ACTIVATION_FIELDS: Partial<Record<keyof Activation, string>> = {
+  artist_name: "Artist", tour_name: "Tour / event", tour_id: "Tour", slug: "Landing page URL", offer_headline: "Headline",
+  discount_type: "Discount type", discount_value: "Discount", discount_currency: "Currency", single_use: "Code use",
+  redeem_place: "Where used", offer_terms: "Terms", tagline: "Tagline", description: "Description", promoter_name: "Promoter",
+  privacy_url: "Privacy URL", primary_color: "Background colour", accent_color: "Accent colour", text_color: "Text colour",
+  hero_image_url: "Landing image", pass_image_url: "Pass image", hero_layout: "Image layout", hero_overlay: "Image tint",
+  status: "Status", pass_expires_at: "Pass expiry",
+};
+
 export async function updateActivationAction(id: string, _prev: FormState, form: FormData): Promise<FormState> {
-  const { activation: existing } = await requireActivation(id);
+  const { user, activation: existing } = await requireActivation(id);
   // The activation type is fixed at creation.
   form.set("kind", existing.kind);
   if (!form.get("slug")) form.set("slug", existing.slug);
@@ -142,15 +158,20 @@ export async function updateActivationAction(id: string, _prev: FormState, form:
   }
   const clash = getActivationBySlug(read.data.slug);
   if (clash && clash.id !== id) return { error: "That slug is already in use" };
+  const beforeShows = listShows(id).map((s) => `${s.show_date} ${s.venue}`).join("|");
   updateActivation(id, read.data);
   if (!read.data.tour_id) replaceShows(id, read.shows);
+  const datesChanged = !read.data.tour_id && beforeShows !== read.shows.map((s) => `${s.show_date} ${s.venue}`).join("|");
+  const details = [describeChanges(existing, read.data, ACTIVATION_FIELDS), datesChanged ? `Dates: ${read.shows.length} date(s)` : null].filter(Boolean).join("; ");
+  if (details) recordActivationChange(user, { ...existing, ...read.data }, "edited", details);
   revalidatePath(`/admin/activations/${id}`, "layout");
   return { ok: "Saved" };
 }
 
 export async function setStatusAction(id: string, status: ActivationStatus) {
-  await requireActivation(id);
+  const { user, activation } = await requireActivation(id);
   setActivationStatus(id, status);
+  if (activation.status !== status) recordActivationChange(user, activation, status === "live" ? "went live" : status === "ended" ? "ended" : "set to draft");
   revalidatePath(`/admin/activations/${id}`, "layout");
 }
 
@@ -162,12 +183,13 @@ async function readUpload(form: FormData) {
 }
 
 export async function importCodesAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireActivation(activationId);
+  const { user, activation } = await requireActivation(activationId);
   try {
     const { text, name } = await readUpload(form);
     const { codes, column } = parseCodesCsv(text);
     if (codes.length === 0) return { error: "No codes found in that file" };
     const { imported, skipped } = importCodes(activationId, codes, name);
+    recordChange(user, { ...activationChange(activation), action: "created", entityType: "codes", details: `${imported} code(s) imported from ${name}` });
     revalidatePath(`/admin/activations/${activationId}`, "layout");
     return {
       ok: `Imported ${imported.toLocaleString()} code(s)${column ? ` from column "${column}"` : ""}${skipped ? ` · ${skipped} duplicate(s) skipped` : ""}.`,
@@ -178,12 +200,13 @@ export async function importCodesAction(activationId: string, _prev: FormState, 
 }
 
 export async function importRedemptionsAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireActivation(activationId);
+  const { user, activation } = await requireActivation(activationId);
   try {
     const { text, name } = await readUpload(form);
     const { rows, columns, skipped } = parseRedemptionsCsv(text);
     if (rows.length === 0) return { error: "No redemption rows with a promo code found in that file" };
     const r = importRedemptions(activationId, rows, name, skipped);
+    recordChange(user, { ...activationChange(activation), action: "created", entityType: "sales", details: `${r.imported} sale(s) imported from ${name}, ${r.matched} matched` });
     revalidatePath(`/admin/activations/${activationId}`, "layout");
     const mapped = Object.entries(columns).map(([k, v]) => `${k}→"${v}"`).join(", ");
     return {
@@ -311,11 +334,12 @@ const generateSchema = z.object({
 });
 
 export async function generateCodesAction(activationId: string, _prev: FormState, form: FormData): Promise<FormState> {
-  await requireActivation(activationId);
+  const { user, activation } = await requireActivation(activationId);
   const parsed = generateSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   try {
     const { count, sample } = generateCodes(activationId, parsed.data);
+    recordChange(user, { ...activationChange(activation), action: "created", entityType: "codes", details: `${count} code(s) generated` });
     revalidatePath(`/admin/activations/${activationId}`, "layout");
     return { ok: `Generated ${count.toLocaleString("en-GB")} codes (e.g. ${sample.join(", ")}). Download them for atVenu below.` };
   } catch (err) {
@@ -328,3 +352,29 @@ export async function setBatchLoadedAction(activationId: string, batchId: string
   setBatchLoaded(activationId, batchId, loaded);
   revalidatePath(`/admin/activations/${activationId}`, "layout");
 }
+
+/** Permanently deletes an activation (client admins only; the name must be typed to confirm). */
+export async function deleteActivationAction(id: string, _prev: FormState, form: FormData): Promise<FormState> {
+  const { user, activation: a } = await requireActivation(id);
+  if (!canDelete(user, a.organisation_id)) return { error: "Only client admins can delete activations" };
+  const expected = KIND_LABELS[a.kind].name.toLowerCase();
+  if (String(form.get("confirm") ?? "").trim().toLowerCase() !== expected) {
+    return { error: `Type "${KIND_LABELS[a.kind].name}" to confirm` };
+  }
+  const s = getActivationStats(id);
+  const back = groupHref(a);
+  deleteActivation(id);
+  recordActivationChange(user, a, "deleted", `${s.opt_ins} ${a.kind === "fan" ? "sign-up(s)" : "pass(es)"}, ${s.codes_total} code(s), ${s.redemptions} sale(s) removed`);
+  revalidatePath("/admin", "layout");
+  // A standalone event disappears with its last activation.
+  redirect(siblingCount(a) ? back : "/admin?deleted=activation");
+}
+
+/** Activations left alongside this one (same tour or event). */
+function siblingCount(a: Activation) {
+  return siblingActivations(a).filter((x) => x.id !== a.id).length || (a.tour_id ? 1 : 0);
+}
+
+const activationChange = (a: Activation) => ({
+  entityId: a.id, entityName: activationName(a), organisationId: a.organisation_id, group: activationGroup(a),
+});

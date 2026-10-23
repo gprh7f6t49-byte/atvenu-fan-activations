@@ -5,7 +5,7 @@ import { formatShowDate } from "@/lib/wallet/content";
 import { GroupTabs } from "./group-tabs";
 
 /** Title and tab bar shared by a tour / event's overview and its activations. */
-export function GroupHeader({ type, href, artist, name, firstDate, lastDate, activations, setupHref }: {
+export function GroupHeader({ type, href, artist, name, firstDate, lastDate, activations, setupHref, renameHref }: {
   type: "tour" | "event";
   href: string;
   artist: string;
@@ -14,6 +14,8 @@ export function GroupHeader({ type, href, artist, name, firstDate, lastDate, act
   lastDate?: string | null;
   activations: Pick<Activation, "id" | "kind" | "status">[];
   setupHref: string;
+  /** Shows a "Rename" link next to the title. */
+  renameHref?: string;
 }) {
   const dates = firstDate ? (firstDate === lastDate || !lastDate ? formatShowDate(firstDate) : `${formatShowDate(firstDate)} – ${formatShowDate(lastDate)}`) : null;
   return (
@@ -24,6 +26,7 @@ export function GroupHeader({ type, href, artist, name, firstDate, lastDate, act
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 ring-1 ring-zinc-300">
           {type === "tour" ? "Tour" : "Event"}
         </span>
+        {renameHref && <Link href={renameHref} className="text-xs underline">Rename</Link>}
       </div>
       <p className="text-sm text-zinc-500">{name}{dates ? ` · ${dates}` : ""}</p>
       <div className="mt-5">

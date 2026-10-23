@@ -7,6 +7,7 @@ import { formatUkDate } from "@/lib/dates";
 import { KIND_LABELS } from "@/lib/discount";
 import { formatShowDate } from "@/lib/wallet/content";
 import { updateEventAction } from "../../tours/actions";
+import { RecentChanges } from "@/components/recent-changes";
 
 export const metadata = { title: "Event · Activations" };
 
@@ -24,7 +25,8 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ad
     <div className="space-y-6">
       <div>
         <GroupHeader type="event" href={`/admin/events/${id}`} artist={first.artist_name} name={first.tour_name}
-          firstDate={shows[0]?.show_date} lastDate={shows.at(-1)?.show_date} activations={activations} setupHref={`/admin/events/${id}/setup`} />
+          firstDate={shows[0]?.show_date} lastDate={shows.at(-1)?.show_date} activations={activations} setupHref={`/admin/events/${id}/setup`}
+          renameHref="#details" />
       </div>
 
       {created.length > 0 && (
@@ -60,8 +62,8 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ad
           )}
         </section>
 
-        <section className="card">
-          <h2 className="mb-3 font-semibold">Event details</h2>
+        <section id="details" className="card scroll-mt-6">
+          <h2 className="mb-3 font-semibold">Event name &amp; dates</h2>
           <ActionForm action={updateEventAction.bind(null, id)} submitLabel="Save for all activations">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block"><span className="label">Artist, brand or venue</span><input name="artist_name" defaultValue={first.artist_name} required className="input" /></label>
@@ -75,6 +77,11 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ad
           </ActionForm>
         </section>
       </div>
+
+      <RecentChanges groupId={id} orgId={first.organisation_id} />
+      <p className="text-xs text-zinc-500">
+        To remove this event, delete its activations (each tab → Settings → Delete). The event goes when its last activation is deleted.
+      </p>
     </div>
   );
 }

@@ -4,17 +4,19 @@ import { GroupHeader } from "@/components/group-header";
 import { ActivationSummary } from "@/components/activation-summary";
 import { getActivationStats, listActivationsForTour } from "@/lib/activations";
 import { KIND_LABELS } from "@/lib/discount";
-import { requireTour } from "@/lib/auth";
+import { canDelete, requireTour } from "@/lib/auth";
+import { DeleteBox } from "@/components/delete-box";
+import { RecentChanges } from "@/components/recent-changes";
 import { listTourCities } from "@/lib/tours";
 import { formatShowDate } from "@/lib/wallet/content";
 import { TourImport } from "./tour-import";
-import { addTourDateAction, deleteTourDateAction, updateTourAction } from "../actions";
+import { addTourDateAction, deleteTourAction, deleteTourDateAction, updateTourAction } from "../actions";
 
 export default async function TourPage({ params, searchParams }: PageProps<"/admin/tours/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
   const created = typeof sp.created === "string" ? sp.created.split(",").filter((k): k is keyof typeof KIND_LABELS => k in KIND_LABELS) : [];
-  const { tour } = await requireTour(id);
+  const { user, tour } = await requireTour(id);
   const cities = listTourCities(id);
   const activations = listActivationsForTour(id);
   const dateCount = cities.reduce((n, c) => n + c.dates.length, 0);
@@ -31,6 +33,7 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
           name={`${tour.name} · ${dateCount} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}`}
           activations={activations}
           setupHref={`/admin/tours/${id}/setup`}
+          renameHref="#details"
         />
       </div>
 
@@ -120,8 +123,8 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
       </div>
 
 
-      <section className="card max-w-3xl">
-        <h2 className="mb-3 font-semibold">Tour details</h2>
+      <section id="details" className="card max-w-3xl scroll-mt-6">
+        <h2 className="mb-3 font-semibold">Tour details &amp; name</h2>
         <ActionForm action={updateTourAction.bind(null, id)} submitLabel="Save">
           <div className="grid gap-4 md:grid-cols-2">
             <label className="block"><span className="label">Artist</span><input name="artist_name" defaultValue={tour.artist_name} required className="input" /></label>
@@ -131,6 +134,24 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
           <p className="text-xs text-zinc-500">Renaming updates every activation on this tour.</p>
         </ActionForm>
       </section>
+
+      <RecentChanges groupId={id} orgId={tour.organisation_id} />
+
+      <DeleteBox
+        title="Delete this tour"
+        confirmWord={tour.name}
+        buttonLabel="Delete tour"
+        action={deleteTourAction.bind(null, id)}
+        blocked={
+          !canDelete(user, tour.organisation_id)
+            ? "Only client admins can delete tours."
+            : activations.length
+              ? `Delete its ${activations.length} activation${activations.length === 1 ? "" : "s"} first: open each tab above → Settings → Delete.`
+              : undefined
+        }
+      >
+        Removes the tour and its {dateCount} date(s). Tours can only be deleted once they have no activations.
+      </DeleteBox>
     </div>
   );
 }

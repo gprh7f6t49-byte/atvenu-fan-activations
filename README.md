@@ -63,6 +63,15 @@ live / draft / ended). Click one to open its **Overview** (summary cards, dates,
 (Fan / Crew / Comps), each keeping its own Results, people, sign-up links, codes and settings, plus **+ Add activation**.
 On an event's Overview, the name and dates can be edited once for all its activations.
 
+**Deleting:** an activation can be deleted from its Settings tab (type its name to confirm). This removes its passes,
+codes, sign-up links and imported sales, and anyone left with no passes. A tour can be deleted only once all its
+activations are gone; a standalone event goes with its last activation. Only client admins (and atVenu admins) can
+delete. **Renaming:** use **Rename** next to a tour or event's title.
+
+**Change log** (menu): who created, edited, renamed, launched, ended or deleted tours, events, activations, dates,
+codes, sales imports and sign-up links, with what changed (e.g. "Discount: 15 → 20"). Searchable, filterable per tour /
+event (each Overview shows its recent changes) and downloadable as CSV.
+
 **New activation** offers two routes. **For a tour**: pick or create the tour, and the setup page creates the fan, crew and
 comp activations together. **Standalone**: for one or two shows, a pop-up shop, food & drink — enter the name, event and
 (optionally) its dates and locations, then pick the activations the same way. Every activation has **Where is the pass
