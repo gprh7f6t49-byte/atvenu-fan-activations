@@ -1,4 +1,5 @@
 import type { Activation, ActivationKind } from "./activations";
+import { CAMPAIGN_TYPES, type CampaignType } from "./campaigns";
 
 export const KIND_LABELS: Record<ActivationKind, { name: string; short: string; people: string; person: string; blurb: string }> = {
   fan: {
@@ -46,45 +47,54 @@ export function formatDiscount(a: Pick<Activation, "discount_type" | "discount_v
   return `${money} off`;
 }
 
-/** Where passes are shown and the discount applied. Free text, with these suggestions. */
-export const REDEEM_PLACES = ["merch stand", "pop-up shop", "bar", "food & drink stalls"] as const;
+/** What a discount covers: merch, food & drink, or both on one pass. */
+export type AppliesTo = "merch" | "fnb" | "both";
+export const APPLIES_LABELS: Record<AppliesTo, string> = { merch: "Merch", fnb: "Food & drink", both: "Merch + food & drink" };
 export const DEFAULT_PLACE = "merch stand";
+const DEFAULT_PLACES: Record<AppliesTo, string> = { merch: "merch stand", fnb: "bars & food stalls", both: "merch stands, bars & food stalls" };
+const GOODS: Record<AppliesTo, string> = { merch: "merch", fnb: "food & drink", both: "merch, food & drink" };
 
-type Wording = Pick<Activation, "artist_name" | "tour_name"> & { redeem_place?: string | null; tour_id?: string | null };
+export const isAppliesTo = (v: unknown): v is AppliesTo => v === "merch" || v === "fnb" || v === "both";
 
-export const placeOf = (a: { redeem_place?: string | null }) => a.redeem_place?.trim() || DEFAULT_PLACE;
+type Wording = Pick<Activation, "artist_name" | "tour_name"> & {
+  redeem_place?: string | null;
+  applies_to?: AppliesTo | null;
+  campaign_type?: CampaignType | null;
+};
 
-/** What the discount is on, for headlines: "merch", "drinks", "food & drink"… */
-function goods(place: string): string {
-  const p = place.toLowerCase();
-  if (p.includes("merch")) return "merch";
-  if (p === "bar" || p.includes("drink") || p.includes("food")) return p === "bar" ? "drinks" : "food & drink";
-  return "";
-}
+/** Where the pass is shown: the activation's own wording, or the default for what it covers. */
+export const placeOf = (a: { redeem_place?: string | null; applies_to?: AppliesTo | null }) =>
+  a.redeem_place?.trim() || DEFAULT_PLACES[a.applies_to ?? "merch"];
 
-/** "any Oasis merch stand on the Live '27 Tour" for a tour; "the bar at Summer Party" for a one-off. */
+export const defaultPlaceFor = (appliesTo: AppliesTo) => DEFAULT_PLACES[appliesTo];
+
+/**
+ * "any Oasis merch stand on the Live '27 Tour" (tour), "the bars & food stalls at Parklife 2027"
+ * (festival), "the Parklife Pop-up Shop" (an event whose name already says where).
+ */
 export function wherePhrase(a: Wording): string {
   const place = placeOf(a);
-  if (a.tour_id) return `any ${a.artist_name} ${place} on the ${a.tour_name}`;
-  // "Parklife Pop-up Shop" already says where; don't repeat it.
-  return a.tour_name.toLowerCase().includes(place.toLowerCase()) ? `the ${a.tour_name}` : `the ${place} at ${a.tour_name}`;
+  if ((a.campaign_type ?? "tour") === "tour") return `any ${a.artist_name} ${place} on the ${a.tour_name}`;
+  const name = a.campaign_type === "festival" ? `${a.artist_name} ${a.tour_name}`.trim() : a.tour_name;
+  return name.toLowerCase().includes(place.toLowerCase()) ? `the ${name}` : `the ${place} at ${name}`;
 }
 
-/** Offer headline used when the admin leaves it blank. */
-export function defaultHeadline(a: Pick<Activation, "kind" | "discount_type" | "discount_value" | "discount_currency"> & { redeem_place?: string | null; tour_id?: string | null }): string {
-  const what = goods(placeOf(a));
-  if (a.discount_type === "percent" && (a.discount_value ?? 0) >= 100) return what ? `Complimentary ${what}` : `Complimentary at the ${placeOf(a)}`;
+/** Offer headline used when the admin leaves it blank: "15% off tour merch", "20% off food & drink". */
+export function defaultHeadline(a: Pick<Activation, "kind" | "discount_type" | "discount_value" | "discount_currency"> & {
+  applies_to?: AppliesTo | null; campaign_type?: CampaignType | null;
+}): string {
+  const what = GOODS[a.applies_to ?? "merch"];
+  if (a.discount_type === "percent" && (a.discount_value ?? 0) >= 100) return `Complimentary ${what}`;
   const d = formatDiscount(a) ?? "Discount";
-  if (!what) return `${d} at the ${placeOf(a)}`;
-  return a.kind === "fan" && a.tour_id && what === "merch" ? `${d} tour merch` : `${d} ${what}`;
+  return a.kind === "fan" && (a.campaign_type ?? "tour") === "tour" && what === "merch" ? `${d} tour merch` : `${d} ${what}`;
 }
 
-/** Default small print for each type, worded for where the pass is used and whether it's a tour. */
-export function defaultTerms(kind: ActivationKind, place: string = DEFAULT_PLACE, onTour = true): string {
-  if (kind === "fan") {
-    return `Use at the ${place}${onTour ? " at each show you've chosen" : ""}. Personal to you. Not exchangeable for cash.`;
-  }
-  if (kind === "crew") return `Crew discount for ${onTour ? "touring personnel" : "event staff"} only. Personal to the named holder — not transferable.`;
+/** Default small print for each type, worded for where the pass is used and the kind of campaign. */
+export function defaultTerms(kind: ActivationKind, place: string = DEFAULT_PLACE, campaign: CampaignType = "tour"): string {
+  const noun = CAMPAIGN_TYPES[campaign].dateNoun;
+  if (kind === "fan") return `Use at the ${place} on each ${noun} you've chosen. Personal to you. Not exchangeable for cash.`;
+  const staff = campaign === "tour" ? "touring personnel" : campaign === "festival" ? "festival crew and staff" : "event staff";
+  if (kind === "crew") return `Crew discount for ${staff} only. Personal to the named holder — not transferable.`;
   return "Comp issued by the organiser. Personal to the named holder — not transferable or exchangeable for cash.";
 }
 
@@ -100,9 +110,15 @@ export const CREW_DEPARTMENTS = [
   "Wardrobe", "Hair & make-up", "Catering", "Security", "Merch", "Transport / drivers", "Local crew", "Other",
 ] as const;
 
-/** Reads the "Where is the pass used?" choice (a suggestion, or "other" plus free text). */
-export function placeFromForm(form: FormData): string {
-  const choice = String(form.get("redeem_place") ?? "").trim();
-  const text = choice === "other" ? String(form.get("redeem_place_other") ?? "").trim() : choice;
-  return text.replace(/\s+/g, " ").slice(0, 40) || DEFAULT_PLACE;
+/**
+ * Reads the "What does the discount cover?" fields: merch and/or food & drink (cover_merch,
+ * cover_fnb) plus optional wording for where the pass is shown (redeem_place).
+ */
+export function coverFromForm(form: FormData): { applies_to: AppliesTo; redeem_place: string } | { error: string } {
+  const merch = form.get("cover_merch") === "1";
+  const fnb = form.get("cover_fnb") === "1";
+  if (!merch && !fnb) return { error: "Choose what the discount covers: merch, food & drink, or both" };
+  const applies_to: AppliesTo = merch && fnb ? "both" : fnb ? "fnb" : "merch";
+  const custom = String(form.get("redeem_place") ?? "").replace(/\s+/g, " ").trim().slice(0, 60);
+  return { applies_to, redeem_place: custom || DEFAULT_PLACES[applies_to] };
 }

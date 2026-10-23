@@ -4,6 +4,7 @@ import { listChanges } from "@/lib/audit";
 import { isPlatformAdmin, orgScope, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fmtDateTime } from "@/lib/format";
+import { campaignHref } from "@/lib/campaigns";
 
 export const metadata = { title: "Change log · Activations" };
 
@@ -17,9 +18,8 @@ export default async function ChangesPage({ searchParams }: PageProps<"/admin/ch
   const rows = listChanges({ orgId: orgScope(user), groupId: group, q: q || undefined, limit: 500 });
   // Link to tours / events that still exist.
   const tours = new Set((db().prepare("SELECT id FROM tours").all() as { id: string }[]).map((r) => r.id));
-  const events = new Set((db().prepare("SELECT COALESCE(group_id, id) AS k FROM activations WHERE tour_id IS NULL").all() as { k: string }[]).map((r) => r.k));
   const href = (t: string | null, id: string | null) =>
-    !id ? null : t === "tour" && tours.has(id) ? `/admin/tours/${id}` : t === "event" && events.has(id) ? `/admin/events/${id}` : null;
+    id && t && tours.has(id) ? campaignHref(id) : null;
   const exportUrl = `/api/admin/changes?${new URLSearchParams({ ...(q && { q }), ...(group && { group }) })}`;
 
   return (
@@ -27,7 +27,7 @@ export default async function ChangesPage({ searchParams }: PageProps<"/admin/ch
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Change log</h1>
-          <p className="text-sm text-zinc-500">Who set up, edited, launched and deleted tours, events and activations.</p>
+          <p className="text-sm text-zinc-500">Who set up, edited, launched and deleted campaigns and activations.</p>
         </div>
         <a href={exportUrl} className="btn-secondary">Download CSV</a>
       </div>
@@ -36,7 +36,7 @@ export default async function ChangesPage({ searchParams }: PageProps<"/admin/ch
         <input name="q" defaultValue={q} placeholder="Search name, person or change…" className="input max-w-sm" />
         <button className="btn-secondary">Search</button>
         {(q || group) && <Link href="/admin/changes" className="text-sm underline">Show everything</Link>}
-        {group && <span className="text-xs text-zinc-500">Showing one tour / event</span>}
+        {group && <span className="text-xs text-zinc-500">Showing one campaign</span>}
       </form>
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">

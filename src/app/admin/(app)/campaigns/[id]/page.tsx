@@ -7,17 +7,24 @@ import { KIND_LABELS } from "@/lib/discount";
 import { canDelete, requireTour } from "@/lib/auth";
 import { DeleteBox } from "@/components/delete-box";
 import { RecentChanges } from "@/components/recent-changes";
-import { listTourCities } from "@/lib/tours";
+import { groupByCity, listTourDates } from "@/lib/tours";
+import { CAMPAIGN_TYPES, campaignHref, datesSummary } from "@/lib/campaigns";
 import { formatShowDate } from "@/lib/wallet/content";
 import { TourImport } from "./tour-import";
 import { addTourDateAction, deleteTourAction, deleteTourDateAction, updateTourAction } from "../actions";
 
-export default async function TourPage({ params, searchParams }: PageProps<"/admin/tours/[id]">) {
+/** A campaign's Overview: its activations, dates and details. */
+export default async function CampaignPage({ params, searchParams }: PageProps<"/admin/campaigns/[id]">) {
   const { id } = await params;
   const sp = await searchParams;
   const created = typeof sp.created === "string" ? sp.created.split(",").filter((k): k is keyof typeof KIND_LABELS => k in KIND_LABELS) : [];
   const { user, tour } = await requireTour(id);
-  const cities = listTourCities(id);
+  const type = CAMPAIGN_TYPES[tour.type];
+  const byVenue = type.linkUnit === "venue";
+  const allDates = listTourDates(id);
+  const cities = groupByCity(allDates, type.linkUnit);
+  const href = campaignHref(id);
+  const summary = datesSummary(tour.type, allDates);
   const activations = listActivationsForTour(id);
   const dateCount = cities.reduce((n, c) => n + c.dates.length, 0);
   const countries = cities.map((c) => c.country).filter(Boolean);
@@ -27,12 +34,12 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
     <div className="space-y-6">
       <div>
         <GroupHeader
-          type="tour"
-          href={`/admin/tours/${id}`}
+          type={tour.type}
+          href={href}
           artist={tour.artist_name}
-          name={`${tour.name} · ${dateCount} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}`}
+          name={`${tour.name} · ${summary}`}
           activations={activations}
-          setupHref={`/admin/tours/${id}/setup`}
+          setupHref={`${href}/setup`}
           renameHref="#details"
         />
       </div>
@@ -42,7 +49,7 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
           <p className="font-semibold">Created: {created.map((k) => KIND_LABELS[k].name).join(", ")}.</p>
           <p className="mt-1">
             Next: open each one from the tabs above. Download generated codes for atVenu from <em>Codes &amp; sales</em>
-            {created.some((k) => k !== "fan") ? ", create crew / comp city sign-up links" : ""}
+            {created.some((k) => k !== "fan") ? ", create crew / comp sign-up links" : ""}
             {created.includes("fan") ? ", and share the fan landing page once it's live" : ""}.
           </p>
         </div>
@@ -50,28 +57,28 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
 
       {activations.length === 0 && (
         <ol className="grid gap-3 md:grid-cols-3">
-          <Step n={1} done title="Create the tour" text={`${tour.artist_name} · ${tour.name}`} />
+          <Step n={1} done title={`Create the ${type.label.toLowerCase()}`} text={`${tour.artist_name} · ${tour.name}`} />
           <Step n={2} done={dateCount > 0} title="Add the dates"
-            text={dateCount ? `${dateCount} show(s) in ${cities.length} cit${cities.length === 1 ? "y" : "ies"}. Add more any time.` : "Paste them in any format below, or use a tour page link."} />
+            text={dateCount ? `${summary}. Add more any time.` : tour.type === "event" ? "Optional for an event. Paste them below if it runs on particular days." : "Paste them in any format below, or use a web page link."} />
           <Step n={3} done={false} title="Choose activations" text="Fan, crew and comps together — they all share these dates.">
-            <Link href={`/admin/tours/${id}/setup`} className={dateCount ? "btn mt-3" : "btn-secondary mt-3"}>Set up activations →</Link>
+            <Link href={`${href}/setup`} className={dateCount || tour.type === "event" ? "btn mt-3" : "btn-secondary mt-3"}>Set up activations →</Link>
           </Step>
         </ol>
       )}
 
-      {activations.length > 0 && <ActivationSummary activations={activations.map((a) => ({ ...a, ...getActivationStats(a.id) }))} setupHref={`/admin/tours/${id}/setup`} />}
+      {activations.length > 0 && <ActivationSummary activations={activations.map((a) => ({ ...a, ...getActivationStats(a.id) }))} setupHref={`${href}/setup`} />}
 
-      <TourImport tourId={id} defaultCountry={usualCountry} collapsed={dateCount > 0} />
+      <TourImport tourId={id} defaultCountry={usualCountry} collapsed={dateCount > 0} noun={type.datesHeading.toLowerCase()} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <section className="card overflow-x-auto">
-          <h2 className="mb-3 font-semibold">Dates by city</h2>
+          <h2 className="mb-3 font-semibold">{type.datesHeading} by {byVenue ? "venue" : "city"}</h2>
           {cities.length === 0 ? (
-            <p className="text-sm text-zinc-500">No dates yet. Paste them into Add tour dates above.</p>
+            <p className="text-sm text-zinc-500">No dates yet. Paste them into Add dates above.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-zinc-500">
-                <tr><th className="py-2">City</th><th>Date</th><th>Venue</th><th>Location</th><th /></tr>
+                <tr><th className="py-2">{byVenue ? "Venue" : "City"}</th><th>Date</th><th>{byVenue ? "City" : "Venue"}</th><th>Location</th><th /></tr>
               </thead>
               <tbody>
                 {cities.map((c) =>
@@ -86,7 +93,7 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
                         )}
                       </td>
                       <td className="py-2">{formatShowDate(d.show_date)}</td>
-                      <td className="py-2">{d.venue}</td>
+                      <td className="py-2">{byVenue ? d.city : d.venue}</td>
                       <td className="py-2 text-xs text-zinc-500">{d.latitude != null ? "📍 set" : "—"}</td>
                       <td className="py-2 text-right">
                         <form action={deleteTourDateAction.bind(null, id, d.id)}>
@@ -111,12 +118,12 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
                 <label className="block"><span className="label">City</span><input name="city" required className="input" list="tour-cities" /></label>
                 <label className="block"><span className="label">Country</span><input name="country" required maxLength={2} className="input uppercase" placeholder="GB" /></label>
               </div>
-              <datalist id="tour-cities">{cities.map((c) => <option key={c.city} value={c.city} />)}</datalist>
+              <datalist id="tour-cities">{[...new Set(allDates.map((d) => d.city))].map((c) => <option key={c} value={c} />)}</datalist>
               <div className="grid grid-cols-2 gap-2">
                 <label className="block"><span className="label">Latitude</span><input name="latitude" inputMode="decimal" className="input" placeholder="Optional" /></label>
                 <label className="block"><span className="label">Longitude</span><input name="longitude" inputMode="decimal" className="input" placeholder="Optional" /></label>
               </div>
-              <p className="text-xs text-zinc-500">Same city name = same city. Coordinates make Apple Wallet passes pop up near the venue.</p>
+              <p className="text-xs text-zinc-500">{byVenue ? "Same venue name = same venue (sign-up links are per venue)." : "Same city name = same city."} Coordinates make Apple Wallet passes pop up near the venue.</p>
             </ActionForm>
           </section>
         </aside>
@@ -124,33 +131,33 @@ export default async function TourPage({ params, searchParams }: PageProps<"/adm
 
 
       <section id="details" className="card max-w-3xl scroll-mt-6">
-        <h2 className="mb-3 font-semibold">Tour details &amp; name</h2>
+        <h2 className="mb-3 font-semibold">{type.label} name &amp; details</h2>
         <ActionForm action={updateTourAction.bind(null, id)} submitLabel="Save">
           <div className="grid gap-4 md:grid-cols-2">
-            <label className="block"><span className="label">Artist</span><input name="artist_name" defaultValue={tour.artist_name} required className="input" /></label>
-            <label className="block"><span className="label">Tour name</span><input name="name" defaultValue={tour.name} required className="input" /></label>
+            <label className="block"><span className="label">{type.nameLabel}</span><input name="artist_name" defaultValue={tour.artist_name} required className="input" /></label>
+            <label className="block"><span className="label">{type.editionLabel}</span><input name="name" defaultValue={tour.name} required className="input" /></label>
           </div>
           <label className="block"><span className="label">Notes</span><textarea name="notes" rows={2} defaultValue={tour.notes ?? ""} className="input" /></label>
-          <p className="text-xs text-zinc-500">Renaming updates every activation on this tour.</p>
+          <p className="text-xs text-zinc-500">Renaming updates every activation in this {type.label.toLowerCase()}.</p>
         </ActionForm>
       </section>
 
       <RecentChanges groupId={id} orgId={tour.organisation_id} />
 
       <DeleteBox
-        title="Delete this tour"
+        title={`Delete this ${type.label.toLowerCase()}`}
         confirmWord={tour.name}
-        buttonLabel="Delete tour"
+        buttonLabel={`Delete ${type.label.toLowerCase()}`}
         action={deleteTourAction.bind(null, id)}
         blocked={
           !canDelete(user, tour.organisation_id)
-            ? "Only client admins can delete tours."
+            ? "Only client admins can delete campaigns."
             : activations.length
               ? `Delete its ${activations.length} activation${activations.length === 1 ? "" : "s"} first: open each tab above → Settings → Delete.`
               : undefined
         }
       >
-        Removes the tour and its {dateCount} date(s). Tours can only be deleted once they have no activations.
+        Removes the {type.label.toLowerCase()} and its {dateCount} date(s). A campaign can only be deleted once it has no activations.
       </DeleteBox>
     </div>
   );

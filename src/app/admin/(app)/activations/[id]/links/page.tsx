@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { formatDiscount } from "@/lib/discount";
 import { fmtDateTime } from "@/lib/format";
+import { CAMPAIGN_TYPES } from "@/lib/campaigns";
 import { activationCities, linkCity, linkState, listSignupLinks, signupUrl, type LinkState } from "@/lib/signup-links";
 import { formatShowDate } from "@/lib/wallet/content";
 import { createLinkAction, deleteLinkAction, newPinAction, setLinkActiveAction } from "./actions";
@@ -23,13 +24,16 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
   const { activation: a } = await requireActivation(id);
   if (a.kind === "fan") redirect(`/admin/activations/${id}`);
   const cities = activationCities(id);
+  const unit = CAMPAIGN_TYPES[a.campaign_type].linkUnit; // "city", or "venue" for festivals
+  const Unit = unit === "venue" ? "Venue" : "City";
+  const whole = a.campaign_type === "tour" ? "all tour" : `the whole ${CAMPAIGN_TYPES[a.campaign_type].label.toLowerCase()}`;
 
   if (!cities.length) {
     return (
       <div className="card text-sm text-zinc-600">
-        Sign-up links cover a city&apos;s dates.{" "}
+        Sign-up links cover a {unit}&apos;s dates.{" "}
         <Link href={`/admin/activations/${id}/settings`} className="font-semibold underline">Add the dates and locations</Link> in Settings first
-        {a.tour_id ? " (they come from the tour)" : ""}.
+        {" "}(they come from the campaign).
       </div>
     );
   }
@@ -47,17 +51,17 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
         </p>
       )}
       <section className="card">
-        <h2 className="font-semibold">Create a city sign-up link</h2>
+        <h2 className="font-semibold">Create a {unit} sign-up link</h2>
         <p className="mb-4 mt-1 text-sm text-zinc-600">
-          Each city gets its own short URL and 6-digit PIN to circulate by WhatsApp or text. People who open the link enter the PIN, fill in
+          Each {unit} gets its own short URL and 6-digit PIN to circulate by WhatsApp or text. People who open the link enter the PIN, fill in
           their name, email and department, and get their {who} pass straight away.
         </p>
         <ActionForm action={createLinkAction.bind(null, id)} submitLabel="Create link & PIN" pendingLabel="Creating…" resetOnSuccess>
           <div className="grid gap-4 md:grid-cols-5">
             <label className="block md:col-span-2">
-              <span className="label">City</span>
+              <span className="label">{Unit}</span>
               <select name="city" required defaultValue="" className="input">
-                <option value="" disabled>Choose a city…</option>
+                <option value="" disabled>Choose a {unit}…</option>
                 {cities.map((c) => (
                   <option key={`${c.city}|${c.country}`} value={`${c.city}|${c.country}`}>
                     {c.city} ({c.country}) — {c.dates.length > 1 ? `${c.dates.length} dates, ${shortDate(c.first_date)}–${shortDate(c.last_date)}` : shortDate(c.first_date)}
@@ -68,8 +72,8 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
             <label className="block">
               <span className="label">Pass valid for</span>
               <select name="pass_scope" defaultValue="city" className="input">
-                <option value="city">This city&apos;s dates</option>
-                <option value="tour">The whole tour</option>
+                <option value="city">This {unit}&apos;s dates</option>
+                <option value="tour">{whole[0].toUpperCase() + whole.slice(1)}</option>
               </select>
             </label>
             <label className="block">
@@ -111,7 +115,7 @@ export default async function SignupLinksPage({ params }: PageProps<"/admin/acti
                       <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase ring-1 ${STATE_STYLES[state]}`}>{state}</span>
                     </div>
                     <p className="text-xs text-zinc-500">
-                      {l.city}, {l.country}{dates ? ` · ${dates}` : ""} · pass valid {l.pass_scope === "city" ? "for this city" : "all tour"}
+                      {l.city}, {l.country}{dates ? ` · ${dates}` : ""} · pass valid {l.pass_scope === "city" ? `for this ${unit}` : whole}
                     </p>
                   </div>
                   <a href={`/api/admin/links/${l.id}/qr`} target="_blank" title="QR code for printing">

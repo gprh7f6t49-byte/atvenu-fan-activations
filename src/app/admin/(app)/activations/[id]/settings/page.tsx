@@ -4,7 +4,7 @@ import { KIND_LABELS } from "@/lib/discount";
 import { ActionForm } from "@/components/action-form";
 import { ActivationFields } from "@/components/activation-fields";
 import { getActivationStats, listShows } from "@/lib/activations";
-import { getTour, listTours } from "@/lib/tours";
+import { getTour } from "@/lib/tours";
 import { deleteActivationAction, updateActivationAction } from "../../../actions";
 
 export default async function SettingsPage({ params }: PageProps<"/admin/activations/[id]/settings">) {
@@ -17,7 +17,7 @@ export default async function SettingsPage({ params }: PageProps<"/admin/activat
       <div className="space-y-6">
         <div className="card">
           <ActionForm action={updateActivationAction.bind(null, id)} submitLabel="Save changes" className="space-y-8">
-            <ActivationFields kind={a.kind} a={a} shows={listShows(id)} tours={listTours(a.organisation_id)} tour={a.tour_id ? getTour(a.tour_id) : undefined} />
+            <ActivationFields kind={a.kind} a={a} shows={listShows(id)} tour={a.tour_id ? getTour(a.tour_id) : undefined} />
           </ActionForm>
         </div>
         <DeleteBox

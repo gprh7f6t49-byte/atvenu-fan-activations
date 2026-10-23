@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getActivationBySlug, listShows } from "@/lib/activations";
 import { upcomingShows } from "@/lib/wallet/content";
+import { CAMPAIGN_TYPES } from "@/lib/campaigns";
 import { CodePoolExhaustedError, getPassByToken, optInFan, passShows } from "@/lib/fans";
 import { sendPassEmail } from "@/lib/email";
 import { consentCopy } from "@/lib/consent";
@@ -41,7 +42,7 @@ export async function submitOptIn(slug: string, _prev: OptInState, form: FormDat
   const upcoming = upcomingShows(listShows(activation.id));
   const picked = new Set(form.getAll("shows").map(String));
   const shows = upcoming.filter((s) => picked.has(s.id));
-  const showsError = upcoming.length && !shows.length ? activation.tour_id ? "Choose the show(s) you're going to" : "Choose the date(s) you're coming" : undefined;
+  const showsError = upcoming.length && !shows.length ? `Choose the ${CAMPAIGN_TYPES[activation.campaign_type].dateNoun}(s) you're ${activation.campaign_type === "tour" ? "going to" : "coming"}` : undefined;
   if (!parsed.success || showsError) {
     const fieldErrors: OptInState["fieldErrors"] = {};
     for (const issue of parsed.success ? [] : parsed.error.issues) {

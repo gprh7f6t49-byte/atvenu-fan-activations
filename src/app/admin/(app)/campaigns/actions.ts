@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { canDelete, isPlatformAdmin, requireEvent, requireTour, requireUser } from "@/lib/auth";
+import { canDelete, isPlatformAdmin, requireTour, requireUser } from "@/lib/auth";
 import { getOrganisation } from "@/lib/orgs";
 import { parseUkDate, formatUkDate } from "@/lib/dates";
 import { addTourDates, createTour, deleteTour, deleteTourDate, listTourDates, parseDateLines, updateTour } from "@/lib/tours";
@@ -14,40 +14,38 @@ import {
   getActivation,
   getActivationBySlug,
   listActivationsForTour,
-  listShows,
-  replaceShows,
   type ActivationInput,
   type ActivationKind,
-  type Show,
 } from "@/lib/activations";
 import { generateCodes, MAX_GENERATE, suggestPrefix } from "@/lib/codes";
-import { defaultHeadline, defaultTerms, KIND_LABELS, placeFromForm } from "@/lib/discount";
+import { coverFromForm, defaultHeadline, defaultTerms, KIND_LABELS } from "@/lib/discount";
+import { CAMPAIGN_TYPES, campaignHref, isCampaignType, type CampaignType } from "@/lib/campaigns";
 import { imageFromForm } from "@/lib/uploads";
 import { heroFromForm } from "@/lib/hero";
-import { db, newId, tx } from "@/lib/db";
-import { eventKey } from "@/lib/groups";
 import type { FormState } from "../actions";
 import { describeChanges, recordActivationChange, recordChange, type ChangeAction, type EntityType } from "@/lib/audit";
 import type { Tour } from "@/lib/tours";
 import type { PublicUser } from "@/lib/users";
 
-function logTour(user: PublicUser, tour: Pick<Tour, "id" | "artist_name" | "name" | "organisation_id">, action: ChangeAction, entityType: EntityType = "tour", details?: string) {
+/** Records a change to a campaign (or its dates) in the change log. */
+function logTour(user: PublicUser, tour: Pick<Tour, "id" | "artist_name" | "name" | "organisation_id" | "type">, action: ChangeAction, entityType?: EntityType, details?: string) {
   recordChange(user, {
-    action, entityType, entityId: tour.id, entityName: `${tour.artist_name} · ${tour.name}`,
-    organisationId: tour.organisation_id, group: { type: "tour", id: tour.id }, details,
+    action, entityType: entityType ?? tour.type, entityId: tour.id, entityName: `${tour.artist_name} · ${tour.name}`,
+    organisationId: tour.organisation_id, group: { type: tour.type, id: tour.id }, details,
   });
 }
 
 const tourSchema = z.object({
-  artist_name: z.string().trim().min(1, "Artist is required").max(120),
-  name: z.string().trim().min(1, "Tour name is required").max(160),
+  artist_name: z.string().trim().min(1, "Enter the name").max(120),
+  name: z.string().trim().min(1, "Enter the tour, edition or event name").max(160),
   notes: z.string().trim().max(2000).optional().transform((v) => v || null),
 });
 
 export async function createTourAction(_prev: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
   const orgId = isPlatformAdmin(user) ? String(form.get("organisation_id") ?? "") : user.organisation_id;
-  if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this tour is for" };
+  if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this campaign is for" };
+  const type: CampaignType = isCampaignType(form.get("type")) ? (form.get("type") as CampaignType) : "tour";
   const parsed = tourSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   let dates;
@@ -56,10 +54,10 @@ export async function createTourAction(_prev: FormState, form: FormData): Promis
   } catch (err) {
     return { error: (err as Error).message };
   }
-  const id = createTour(parsed.data, orgId);
+  const id = createTour({ ...parsed.data, type }, orgId);
   if (dates.length) addTourDates(id, dates);
-  logTour(user, { id, ...parsed.data, organisation_id: orgId }, "created", "tour", dates.length ? `${dates.length} date(s)` : undefined);
-  redirect(`/admin/tours/${id}?new=1`);
+  logTour(user, { id, ...parsed.data, organisation_id: orgId, type }, "created", undefined, dates.length ? `${dates.length} date(s)` : undefined);
+  redirect(`${campaignHref(id)}?new=1`);
 }
 
 export async function updateTourAction(id: string, _prev: FormState, form: FormData): Promise<FormState> {
@@ -67,8 +65,9 @@ export async function updateTourAction(id: string, _prev: FormState, form: FormD
   const parsed = tourSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   updateTour(id, parsed.data);
-  const details = describeChanges(tour, parsed.data, { artist_name: "Artist", name: "Tour name", notes: "Notes" });
-  if (details) logTour(user, { ...tour, ...parsed.data }, tour.artist_name !== parsed.data.artist_name || tour.name !== parsed.data.name ? "renamed" : "edited", "tour", details);
+  const t = CAMPAIGN_TYPES[tour.type];
+  const details = describeChanges(tour, parsed.data, { artist_name: t.nameLabel, name: t.editionLabel, notes: "Notes" });
+  if (details) logTour(user, { ...tour, ...parsed.data }, tour.artist_name !== parsed.data.artist_name || tour.name !== parsed.data.name ? "renamed" : "edited", undefined, details);
   revalidatePath("/admin", "layout");
   return { ok: "Saved" };
 }
@@ -87,7 +86,7 @@ export async function addTourDateAction(tourId: string, _prev: FormState, form: 
   const parsed = dateSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   addTourDates(tourId, [parsed.data]);
-  logTour(user, tour, "created", "tour dates", `${formatUkDate(parsed.data.show_date)} ${parsed.data.venue}, ${parsed.data.city}`);
+  logTour(user, tour, "created", "dates", `${formatUkDate(parsed.data.show_date)} ${parsed.data.venue}, ${parsed.data.city}`);
   revalidatePath("/admin", "layout");
   return { ok: `Added ${parsed.data.city} · ${formatUkDate(parsed.data.show_date)}` };
 }
@@ -96,7 +95,7 @@ export async function deleteTourDateAction(tourId: string, dateId: string) {
   const { user, tour } = await requireTour(tourId);
   const d = listTourDates(tourId).find((x) => x.id === dateId);
   deleteTourDate(tourId, dateId);
-  if (d) logTour(user, tour, "deleted", "tour dates", `${formatUkDate(d.show_date)} ${d.venue}, ${d.city}`);
+  if (d) logTour(user, tour, "deleted", "dates", `${formatUkDate(d.show_date)} ${d.venue}, ${d.city}`);
   revalidatePath("/admin", "layout");
 }
 
@@ -158,7 +157,7 @@ export async function addImportedDatesAction(tourId: string, rows: unknown): Pro
     clean.push({ ...parsed.data, show_date });
   }
   const n = addTourDates(tourId, clean);
-  logTour(user, tour, "created", "tour dates", `${n} date(s) added from pasted text / tour page`);
+  logTour(user, tour, "created", "dates", `${n} date(s) added from pasted text / web page`);
   revalidatePath("/admin", "layout");
   return { ok: `Added ${n} date(s) to the tour` };
 }
@@ -190,17 +189,13 @@ const sharedSchema = z.object({
 interface SetupContext {
   user: PublicUser;
   organisationId: string;
-  /** null for a standalone activation (one-off show, pop-up, food & drink). */
-  tourId: string | null;
+  tourId: string;
+  campaignType: CampaignType;
   artist: string;
   eventName: string;
-  /** Types already set up (tour only), which are skipped. */
+  /** Types already set up, which are skipped. */
   existing: Set<ActivationKind>;
-  /** A standalone activation's own dates and locations. */
-  dates: Omit<Show, "id" | "activation_id">[];
   firstDate: string | undefined;
-  /** Standalone event these join (adding activations to an existing event). */
-  groupId?: string;
 }
 
 /**
@@ -248,11 +243,11 @@ async function createFromSetup(form: FormData, ctx: SetupContext): Promise<{ err
     return { error: (err as Error).message };
   }
 
-  const place = placeFromForm(form);
-  const onTour = Boolean(ctx.tourId);
+  const cover = coverFromForm(form);
+  if ("error" in cover) return cover;
+  const { applies_to, redeem_place } = cover;
   const year = ctx.firstDate ? Number(ctx.firstDate.slice(0, 4)) : new Date().getFullYear();
   const created: { kind: ActivationKind; id: string }[] = [];
-  const groupId = ctx.groupId ?? newId();
   for (const p of plans) {
     const input: ActivationInput = {
       kind: p.kind,
@@ -262,9 +257,10 @@ async function createFromSetup(form: FormData, ctx: SetupContext): Promise<{ err
       tour_name: ctx.eventName,
       tagline: null,
       description: null,
-      offer_headline: defaultHeadline({ ...p, redeem_place: place, tour_id: ctx.tourId }),
-      offer_terms: defaultTerms(p.kind, place, onTour),
-      redeem_place: place,
+      offer_headline: defaultHeadline({ ...p, applies_to, campaign_type: ctx.campaignType }),
+      offer_terms: defaultTerms(p.kind, redeem_place, ctx.campaignType),
+      redeem_place,
+      applies_to,
       promoter_name: null,
       ...colours,
       hero_image_url: p.kind === "fan" ? heroImage : null,
@@ -278,8 +274,7 @@ async function createFromSetup(form: FormData, ctx: SetupContext): Promise<{ err
       discount_currency: p.discount_currency,
       single_use: p.single_use,
     };
-    const id = createActivation(input, ctx.organisationId, groupId);
-    if (!onTour && ctx.dates.length) replaceShows(id, ctx.dates);
+    const id = createActivation(input, ctx.organisationId);
     if (p.codes > 0) generateCodes(id, { quantity: p.codes, prefix: suggestPrefix(getActivation(id)!, year), length: 6 });
     recordActivationChange(ctx.user, getActivation(id)!, "created",
       [input.offer_headline, status === "live" ? "live" : "draft", p.codes ? `${p.codes} codes generated` : null].filter(Boolean).join(" · "));
@@ -295,124 +290,27 @@ export async function setupActivationsAction(tourId: string, _prev: FormState, f
     user,
     organisationId: tour.organisation_id!,
     tourId,
+    campaignType: tour.type,
     artist: tour.artist_name,
     eventName: tour.name,
     existing: new Set(listActivationsForTour(tourId).map((a) => a.kind)),
-    dates: [],
     firstDate: listTourDates(tourId)[0]?.show_date,
   });
   if ("error" in result) return result;
-  redirect(`/admin/tours/${tourId}?created=${result.created.map((c) => c.kind).join(",")}`);
+  redirect(`${campaignHref(tourId)}?created=${result.created.map((c) => c.kind).join(",")}`);
 }
 
-const standaloneSchema = z.object({
-  artist_name: z.string().trim().min(1, "Enter the artist, brand or venue").max(120),
-  tour_name: z.string().trim().min(1, "Enter the event or campaign name").max(160),
-});
-
-/** Activations without a tour: a one-off show or two, a pop-up shop, food & drink. */
-export async function createStandaloneAction(_prev: FormState, form: FormData): Promise<FormState> {
-  const user = await requireUser();
-  const orgId = isPlatformAdmin(user) ? String(form.get("organisation_id") ?? "") : user.organisation_id;
-  if (!orgId || !getOrganisation(orgId)) return { error: "Choose which client this is for" };
-  const details = standaloneSchema.safeParse(Object.fromEntries(form));
-  if (!details.success) return { error: details.error.issues[0].message };
-
-  // Date rows: d_date / d_venue / d_city / d_country, in order. Blank rows are ignored.
-  const col = (k: string) => form.getAll(k).map((v) => String(v).trim());
-  const [dd, dv, dc, dn] = [col("d_date"), col("d_venue"), col("d_city"), col("d_country")];
-  const dates: Omit<Show, "id" | "activation_id">[] = [];
-  for (let i = 0; i < dd.length; i++) {
-    if (!dd[i] && !dv[i] && !dc[i]) continue;
-    const show_date = parseUkDate(dd[i] ?? "");
-    if (!show_date) return { error: `Date ${i + 1}: enter it as DD-MM-YYYY, e.g. 12-06-2027` };
-    if (!dv[i]) return { error: `Date ${i + 1}: enter where it is (venue or location)` };
-    dates.push({ show_date, venue: dv[i], city: dc[i] || dv[i], country: (dn[i] || "").toUpperCase().slice(0, 2), latitude: null, longitude: null });
-  }
-  dates.sort((x, y) => x.show_date.localeCompare(y.show_date));
-
-  const result = await createFromSetup(form, {
-    user,
-    organisationId: orgId,
-    tourId: null,
-    artist: details.data.artist_name,
-    eventName: details.data.tour_name,
-    existing: new Set(),
-    dates,
-    firstDate: dates[0]?.show_date,
-  });
-  if ("error" in result) return result;
-  redirect(`/admin/events/${eventKey(getActivation(result.created[0].id)!)}?created=${result.created.map((c) => c.kind).join(",")}`);
-}
-
-/** Adds more activation types to a standalone event; they join its group and copy its dates. */
-export async function addToEventAction(key: string, _prev: FormState, form: FormData): Promise<FormState> {
-  const { user, activations } = await requireEvent(key);
-  const first = activations[0];
-  const dates = listShows(first.id).map(({ show_date, venue, city, country, latitude, longitude }) => ({ show_date, venue, city, country, latitude, longitude }));
-  // A lone older activation becomes the event's anchor: its id is the group id.
-  if (!first.group_id) db().prepare("UPDATE activations SET group_id = ? WHERE id = ?").run(key, first.id);
-  const result = await createFromSetup(form, {
-    user,
-    organisationId: first.organisation_id!,
-    tourId: null,
-    artist: first.artist_name,
-    eventName: first.tour_name,
-    existing: new Set(activations.map((a) => a.kind)),
-    dates,
-    firstDate: dates[0]?.show_date,
-    groupId: key,
-  });
-  if ("error" in result) return result;
-  redirect(`/admin/events/${key}?created=${result.created.map((c) => c.kind).join(",")}`);
-}
-
-/** Renames an event and/or replaces its dates, for every activation in it. */
-export async function updateEventAction(key: string, _prev: FormState, form: FormData): Promise<FormState> {
-  const { user, activations } = await requireEvent(key);
-  const details = standaloneSchema.safeParse(Object.fromEntries(form));
-  if (!details.success) return { error: details.error.issues[0].message };
-  let dates;
-  try {
-    dates = parseDateLines(String(form.get("dates") ?? ""));
-  } catch (err) {
-    return { error: (err as Error).message };
-  }
-  tx((conn) => {
-    for (const a of activations) {
-      conn.prepare("UPDATE activations SET artist_name = ?, tour_name = ?, updated_at = ? WHERE id = ?")
-        .run(details.data.artist_name, details.data.tour_name, new Date().toISOString(), a.id);
-    }
-  });
-  const before = activations[0];
-  const beforeDates = listShows(before.id).map((s) => `${s.show_date} ${s.venue} ${s.city}`).join("|");
-  for (const a of activations) replaceShows(a.id, dates);
-  const changed = [
-    describeChanges(before, details.data, { artist_name: "Name", tour_name: "Event" }),
-    beforeDates !== dates.map((s) => `${s.show_date} ${s.venue} ${s.city}`).join("|") ? `Dates: ${dates.length} date(s)` : null,
-  ].filter(Boolean).join("; ");
-  if (changed) {
-    recordChange(user, {
-      action: before.artist_name !== details.data.artist_name || before.tour_name !== details.data.tour_name ? "renamed" : "edited",
-      entityType: "event", entityId: key, entityName: `${details.data.artist_name} · ${details.data.tour_name}`,
-      organisationId: before.organisation_id, group: { type: "event", id: key }, details: changed,
-    });
-  }
-  revalidatePath("/admin", "layout");
-  return { ok: "Saved for all activations in this event" };
-}
-
-/** Deletes a tour once all its activations have been deleted. */
+/** Deletes a campaign once all its activations have been deleted. */
 export async function deleteTourAction(tourId: string, _prev: FormState, form: FormData): Promise<FormState> {
   const { user, tour } = await requireTour(tourId);
-  if (!canDelete(user, tour.organisation_id)) return { error: "Only client admins can delete tours" };
+  if (!canDelete(user, tour.organisation_id)) return { error: "Only client admins can delete campaigns" };
   if (String(form.get("confirm") ?? "").trim().toLowerCase() !== tour.name.trim().toLowerCase()) {
-    return { error: `Type the tour name (${tour.name}) to confirm` };
+    return { error: `Type "${tour.name}" to confirm` };
   }
   const dates = listTourDates(tourId).length;
   const result = deleteTour(tourId);
   if (result.error) return { error: result.error };
-  logTour(user, tour, "deleted", "tour", `${dates} date(s) removed`);
+  logTour(user, tour, "deleted", undefined, `${dates} date(s) removed`);
   revalidatePath("/admin", "layout");
-  redirect("/admin?deleted=tour");
+  redirect("/admin?deleted=campaign");
 }

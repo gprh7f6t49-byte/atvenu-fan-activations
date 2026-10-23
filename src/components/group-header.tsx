@@ -3,10 +3,11 @@ import type { Activation } from "@/lib/activations";
 import { KIND_LABELS } from "@/lib/discount";
 import { formatShowDate } from "@/lib/wallet/content";
 import { GroupTabs } from "./group-tabs";
+import { CAMPAIGN_TYPES, type CampaignType } from "@/lib/campaigns";
 
 /** Title and tab bar shared by a tour / event's overview and its activations. */
 export function GroupHeader({ type, href, artist, name, firstDate, lastDate, activations, setupHref, renameHref }: {
-  type: "tour" | "event";
+  type: CampaignType;
   href: string;
   artist: string;
   name: string;
@@ -20,11 +21,11 @@ export function GroupHeader({ type, href, artist, name, firstDate, lastDate, act
   const dates = firstDate ? (firstDate === lastDate || !lastDate ? formatShowDate(firstDate) : `${formatShowDate(firstDate)} – ${formatShowDate(lastDate)}`) : null;
   return (
     <div className="mb-6">
-      <Link href="/admin" className="text-sm text-zinc-500 hover:text-zinc-900">← Activations</Link>
+      <Link href="/admin" className="text-sm text-zinc-500 hover:text-zinc-900">← Campaigns</Link>
       <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h1 className="text-2xl font-bold">{artist}</h1>
         <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-zinc-600 ring-1 ring-zinc-300">
-          {type === "tour" ? "Tour" : "Event"}
+          {CAMPAIGN_TYPES[type].label}
         </span>
         {renameHref && <Link href={renameHref} className="text-xs underline">Rename</Link>}
       </div>

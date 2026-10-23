@@ -52,7 +52,7 @@ export default async function ClientPage({ params }: PageProps<"/admin/clients/[
             <ul className="divide-y divide-zinc-100 text-sm">
               {tours.map((t) => (
                 <li key={t.id} className="py-2">
-                  <Link href={`/admin/tours/${t.id}`} className="font-medium hover:underline">{t.artist_name}</Link>
+                  <Link href={`/admin/campaigns/${t.id}`} className="font-medium hover:underline">{t.artist_name}</Link>
                   <span className="ml-2 text-xs text-zinc-500">{t.name} · {t.date_count} dates</span>
                 </li>
               ))}

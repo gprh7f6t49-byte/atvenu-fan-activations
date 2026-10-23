@@ -58,10 +58,21 @@ If the atVenu export includes a discount column, that figure is used instead of 
 
 ### Crew self sign-up (city links)
 
-The **Activations** screen lists tours and standalone events, one row each, with a chip per activation type (dot =
-live / draft / ended). Click one to open its **Overview** (summary cards, dates, details) with a tab per activation type
-(Fan / Crew / Comps), each keeping its own Results, people, sign-up links, codes and settings, plus **+ Add activation**.
-On an event's Overview, the name and dates can be edited once for all its activations.
+**Campaigns** hold activations. A campaign is a **Tour** (many shows across cities), a **Festival** (any mix of days and
+venues — several weekends, several sites) or an **Event** (a one-off show or two, a pop-up shop, a food & drink offer).
+The Campaigns screen lists them, one row each, with a chip per activation (dot = live / draft / ended; "F&B" when it
+covers food & drink). Click one to open its **Overview** (summary cards, dates, name and details, recent changes) with a
+tab per activation type (Fan / Crew / Comps), each keeping its own Results, people, sign-up links, codes and settings,
+plus **+ Add activation**. **New campaign** asks for the type, then the name; add the dates (paste any format) and set up
+the activations on the Overview.
+
+Each activation's discount covers **merch, food & drink, or both** on one pass (Settings → "What does the discount
+cover?"), with optional wording for where the pass is shown (e.g. "VIP Bar"). Headlines, terms, the landing page,
+passes and emails follow it ("15% off merch, food & drink"), and the atVenu code download has an "Applies To" column so
+each till system can be set up. Crew / comp sign-up links are per city for tours and events, and per venue for festivals.
+
+Existing data converts automatically: tours become Tour campaigns, standalone activations become Event campaigns (old
+links redirect), and bar / food & drink offers are marked as food & drink.
 
 **Deleting:** an activation can be deleted from its Settings tab (type its name to confirm). This removes its passes,
 codes, sign-up links and imported sales, and anyone left with no passes. A tour can be deleted only once all its
@@ -71,13 +82,6 @@ delete. **Renaming:** use **Rename** next to a tour or event's title.
 **Change log** (menu): who created, edited, renamed, launched, ended or deleted tours, events, activations, dates,
 codes, sales imports and sign-up links, with what changed (e.g. "Discount: 15 → 20"). Searchable, filterable per tour /
 event (each Overview shows its recent changes) and downloadable as CSV.
-
-**New activation** offers two routes. **For a tour**: pick or create the tour, and the setup page creates the fan, crew and
-comp activations together. **Standalone**: for one or two shows, a pop-up shop, food & drink — enter the name, event and
-(optionally) its dates and locations, then pick the activations the same way. Every activation has **Where is the pass
-used?** (merch stand, pop-up shop, bar, food & drink stalls, or your own words), which shapes the wording on the landing
-page, passes and emails. On the tour route, the setup page creates them (tick the ones you need, set each discount, optionally generate codes), all
-sharing the tour's dates, branding and images.
 
 1. **Tours → New tour** (or **New activation → Create a tour**): add the dates. Dates are typed as **DD-MM-YYYY**. The quickest way is **Import dates from the
    tour page**: paste the artist's or promoter's tour page link (or copy the dates off the page and paste the text).

@@ -1,4 +1,5 @@
 import { LandingLayout } from "@/components/landing-layout";
+import { CAMPAIGN_TYPES } from "@/lib/campaigns";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getActivationBySlug, listShows } from "@/lib/activations";
@@ -53,7 +54,7 @@ export default async function ActivationLanding({ params, searchParams }: PagePr
                 copy={consentCopy(a)}
                 privacyUrl={a.privacy_url}
                 source={source}
-                noun={a.tour_id ? "show" : "date"}
+                noun={CAMPAIGN_TYPES[a.campaign_type].dateNoun}
                 shows={upcomingShows(shows).map((s) => ({ id: s.id, date: formatShowDate(s.show_date), place: `${s.venue}, ${s.city}` }))}
               />
             </>

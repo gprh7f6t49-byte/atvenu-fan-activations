@@ -1,4 +1,6 @@
 import type { HeroLayout, HeroOverlay } from "./hero";
+import type { AppliesTo } from "./discount";
+import type { CampaignType } from "./campaigns";
 import { db, newId, nowIso, tx } from "./db";
 
 export type ActivationStatus = "draft" | "live" | "ended";
@@ -26,6 +28,10 @@ export interface Activation {
   hero_focus_y: number;
   hero_overlay: HeroOverlay;
   redeem_place: string;
+  /** Merch, food & drink, or both. */
+  applies_to: AppliesTo;
+  /** Copied from the campaign (tour / festival / event) for wording. */
+  campaign_type: CampaignType;
   privacy_url: string | null;
   status: ActivationStatus;
   pass_expires_at: string | null;
@@ -69,7 +75,7 @@ export interface ActivationStats {
   revenue: { currency: string | null; total: number }[];
 }
 
-export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at" | "organisation_id" | "group_id">;
+export type ActivationInput = Omit<Activation, "id" | "created_at" | "updated_at" | "organisation_id" | "group_id" | "campaign_type">;
 
 const KIND_SLUG_PREFIX: Record<ActivationKind, string> = { fan: "", crew: "crew-", comp: "comps-" };
 
@@ -92,6 +98,7 @@ const EDITABLE_FIELDS = [
   "hero_focus_y",
   "hero_overlay",
   "redeem_place",
+  "applies_to",
   "privacy_url",
   "status",
   "pass_expires_at",
@@ -121,12 +128,13 @@ export function getActivationBySlug(slug: string): Activation | undefined {
   return db().prepare("SELECT * FROM activations WHERE slug = ?").get(slug) as unknown as Activation | undefined;
 }
 
-export function createActivation(input: ActivationInput, organisationId: string, groupId: string | null = null): string {
+export function createActivation(input: ActivationInput, organisationId: string): string {
   const id = newId();
-  const cols = ["id", "kind", "organisation_id", "group_id", ...EDITABLE_FIELDS];
+  const type = (input.tour_id && (db().prepare("SELECT type FROM tours WHERE id = ?").get(input.tour_id) as { type: CampaignType } | undefined)?.type) || "tour";
+  const cols = ["id", "kind", "organisation_id", "campaign_type", ...EDITABLE_FIELDS];
   db()
     .prepare(`INSERT INTO activations (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`)
-    .run(id, input.kind, organisationId, input.tour_id ? null : groupId, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
+    .run(id, input.kind, organisationId, type, ...EDITABLE_FIELDS.map((f) => input[f] ?? null));
   return id;
 }
 

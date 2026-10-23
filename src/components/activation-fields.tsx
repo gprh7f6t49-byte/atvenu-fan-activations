@@ -1,73 +1,34 @@
 import Link from "next/link";
 import type { Activation, ActivationKind, Show } from "@/lib/activations";
-import type { Organisation } from "@/lib/orgs";
 import type { Tour } from "@/lib/tours";
 import { formatUkDate } from "@/lib/dates";
+import { CAMPAIGN_TYPES, campaignHref } from "@/lib/campaigns";
 import { ImageField } from "./image-field";
 import { HeroImageEditor } from "./hero-image-editor";
 import { HERO_DEFAULTS } from "@/lib/hero";
 import { DEFAULT_PLACE, defaultTerms, KIND_DEFAULTS } from "@/lib/discount";
-import { PlaceField } from "./place-field";
-
-const showsToText = (shows: Show[]) =>
-  shows
-    .map((s) => [formatUkDate(s.show_date), s.venue, s.city, s.country, s.latitude ?? "", s.longitude ?? ""].join(" | ").replace(/( \| )+$/, ""))
-    .join("\n");
+import { CoverField } from "./cover-field";
 
 /**
- * Shared fields for the create and edit activation forms. Fan-only fields are hidden for crew / comps.
- * When a tour is chosen, artist, tour name and dates come from the tour instead of being typed here.
+ * The activation settings form. Fan-only fields are hidden for crew / comps. The name and dates
+ * belong to the campaign and are edited on its Overview.
  */
-export function ActivationFields({ kind, a, shows = [], tours = [], tour, organisations }: {
-  kind: ActivationKind; a?: Activation; shows?: Show[]; tours?: Tour[]; tour?: Tour;
-  /** Only passed to atVenu admins creating an activation: choose the client. */
-  organisations?: Organisation[];
+export function ActivationFields({ kind, a, shows = [], tour }: {
+  kind: ActivationKind; a: Activation; shows?: Show[]; tour?: Tour;
 }) {
   const fan = kind === "fan";
   const d = KIND_DEFAULTS[kind];
+  const type = CAMPAIGN_TYPES[a.campaign_type];
   return (
     <div className="space-y-8">
       <input type="hidden" name="kind" value={kind} />
-      {organisations && (tour ? (
-        <input type="hidden" name="organisation_id" value={tour.organisation_id ?? ""} />
-      ) : (
-        <label className="block max-w-md">
-          <span className="label">Client</span>
-          <select name="organisation_id" required defaultValue="" className="input">
-            <option value="" disabled>Choose a client…</option>
-            {organisations.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
-        </label>
-      ))}
 
       <section className="grid gap-4 md:grid-cols-2">
-        <h2 className="md:col-span-2 text-sm font-bold">Artist & tour</h2>
-        {tours.length > 0 && (
-          <label className="block md:col-span-2">
-            <span className="label">Tour</span>
-            <select name="tour_id" defaultValue={tour?.id ?? ""} className="input">
-              {!tour && <option value="">— Not linked to a tour (one-off show, pop-up, food &amp; drink)</option>}
-              {tours.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.artist_name} — {t.name}{organisations && "organisation_name" in t ? ` (${(t as Tour & { organisation_name: string | null }).organisation_name})` : ""}
-                </option>
-              ))}
-            </select>
-            {tour ? (
-              <span className="mt-1 block text-xs text-zinc-500">
-                Artist, tour name, dates and cities come from the tour. <Link href={`/admin/tours/${tour.id}`} className="underline">Edit tour dates</Link>
-              </span>
-            ) : (
-              <span className="mt-1 block text-xs text-zinc-500">Link a tour to use its dates, or leave it standalone and enter the dates below.</span>
-            )}
-          </label>
-        )}
-        {!tour && (
-          <>
-            <Text name="artist_name" label="Artist, brand or venue" defaultValue={a?.artist_name} placeholder="e.g. Oasis, or The Jazz Café" />
-            <Text name="tour_name" label="Event or campaign" defaultValue={a?.tour_name} placeholder="e.g. Summer Pop-up 2027" />
-          </>
-        )}
+        <h2 className="md:col-span-2 text-sm font-bold">Campaign</h2>
+        <p className="md:col-span-2 -mt-2 text-sm text-zinc-600">
+          {type.label}: <b>{tour?.artist_name ?? a.artist_name}</b> · {tour?.name ?? a.tour_name}.{" "}
+          {a.tour_id && <Link href={campaignHref(a.tour_id)} className="underline">Edit the name and {type.datesHeading.toLowerCase()} on the Overview</Link>}
+        </p>
         {fan ? (
           <>
             <Text name="slug" label="Landing page URL slug" defaultValue={a?.slug} placeholder="oasis-2027" required hint="Fans visit /a/<slug>" />
@@ -107,7 +68,7 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
           </select>
         </label>
         <div className="md:col-span-4">
-          <PlaceField value={a?.redeem_place} />
+          <CoverField appliesTo={a.applies_to} place={a.redeem_place} />
         </div>
         <p className="md:col-span-4 -mt-2 text-xs text-zinc-500">
           Set the same discount on the promo codes in atVenu. atVenu applies the discount at the till; this setting controls what
@@ -118,7 +79,7 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
             placeholder={fan ? "Leave blank for e.g. “15% off tour merch”" : "Leave blank for e.g. “25% off merch”"} />
         </div>
         <div className="md:col-span-2">
-          <Area name="offer_terms" label="Terms (small print)" defaultValue={a ? a.offer_terms : defaultTerms(kind, DEFAULT_PLACE, Boolean(tour))} />
+          <Area name="offer_terms" label="Terms (small print)" defaultValue={a.offer_terms ?? defaultTerms(kind, DEFAULT_PLACE, a.campaign_type)} />
         </div>
       </section>
 
@@ -146,8 +107,9 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
                 primary_color: a?.primary_color ?? "#0B0B0C",
                 accent_color: a?.accent_color ?? "#E8C547",
                 text_color: a?.text_color ?? "#FFFFFF",
-                redeem_place: a?.redeem_place,
-                tour_id: a?.tour_id ?? tour?.id ?? null,
+                redeem_place: a.redeem_place,
+                applies_to: a.applies_to,
+                campaign_type: a.campaign_type,
               }}
               shows={shows.slice(0, 8).map((s) => ({ id: s.id, show_date: s.show_date, venue: s.venue, city: s.city }))}
             />
@@ -182,17 +144,6 @@ export function ActivationFields({ kind, a, shows = [], tours = [], tour, organi
         </label>
       </section>
 
-      {!tour && (
-      <section>
-        <h2 className="mb-2 text-sm font-bold">Dates &amp; locations (optional)</h2>
-        <p className="mb-2 text-xs text-zinc-500">
-          One per line: <code>DD-MM-YYYY | venue | city | country | latitude | longitude</code>. Coordinates are optional; when set, the
-          Apple Wallet pass pops up on the lock screen near the venue.
-        </p>
-        <textarea name="shows" rows={8} defaultValue={showsToText(shows)} className="input font-mono text-xs"
-          placeholder="12-06-2027 | Wembley Stadium | London | GB | 51.5560 | -0.2796" />
-      </section>
-      )}
     </div>
   );
 }

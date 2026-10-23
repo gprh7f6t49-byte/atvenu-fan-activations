@@ -12,7 +12,7 @@ interface Props {
   /** Upcoming shows to choose from, already formatted. */
   shows: { id: string; date: string; place: string }[];
   /** "show" on a tour, "date" for a pop-up or one-off. */
-  noun?: "show" | "date";
+  noun?: string;
 }
 
 export function OptInForm({ action, copy, privacyUrl, source, shows, noun = "show" }: Props) {
@@ -56,7 +56,7 @@ export function OptInForm({ action, copy, privacyUrl, source, shows, noun = "sho
       {shows.length > 0 && (
         <fieldset>
           <legend className="mb-1 block text-xs font-semibold uppercase tracking-widest opacity-70">
-            {noun === "show" ? `Which show${shows.length > 1 ? "s are" : " is"} you going to?` : `Which date${shows.length > 1 ? "s are" : " is"} you coming?`}
+            {noun === "show" ? `Which show${shows.length > 1 ? "s are" : " is"} you going to?` : `Which ${noun}${shows.length > 1 ? "s are" : " is"} you coming?`}
           </legend>
           {shows.length > 1 && <p className="mb-2 text-xs opacity-60">Tick all that apply — your pass works at each one.</p>}
           <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-white/20 bg-white/5 p-1.5">

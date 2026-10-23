@@ -1,8 +1,11 @@
 import { db, newId, tx } from "./db";
 import { parseUkDate } from "./dates";
+import type { CampaignType } from "./campaigns";
 
 export interface Tour {
   id: string;
+  /** Campaign type: tour, festival or event. */
+  type: CampaignType;
   artist_name: string;
   name: string;
   notes: string | null;
@@ -59,11 +62,11 @@ export function getTour(id: string): Tour | undefined {
   return db().prepare("SELECT * FROM tours WHERE id = ?").get(id) as unknown as Tour | undefined;
 }
 
-export function createTour(input: { artist_name: string; name: string; notes: string | null }, organisationId: string): string {
+export function createTour(input: { artist_name: string; name: string; notes: string | null; type?: CampaignType }, organisationId: string): string {
   const id = newId();
   db()
-    .prepare("INSERT INTO tours (id, artist_name, name, notes, organisation_id) VALUES (?,?,?,?,?)")
-    .run(id, input.artist_name, input.name, input.notes, organisationId);
+    .prepare("INSERT INTO tours (id, artist_name, name, notes, organisation_id, type) VALUES (?,?,?,?,?,?)")
+    .run(id, input.artist_name, input.name, input.notes, organisationId, input.type ?? "tour");
   return id;
 }
 
@@ -108,12 +111,16 @@ export function listTourCities(tourId: string): TourCity[] {
   return groupByCity(listTourDates(tourId));
 }
 
-/** Groups any list of dates (a tour's, or a standalone activation's own) by city. */
-export function groupByCity(dates: Omit<TourDate, "tour_id">[]): TourCity[] {
+/**
+ * Groups dates for sign-up links: by city (tours, events), or by venue (festivals, which can run
+ * at several sites in one city). For venues the venue name goes in `city`, so links read "Valid in <venue>".
+ */
+export function groupByCity(dates: Omit<TourDate, "tour_id">[], by: "city" | "venue" = "city"): TourCity[] {
   const byCity = new Map<string, TourCity>();
   for (const d of dates as TourDate[]) {
-    const key = `${d.city}|${d.country}`;
-    const c = byCity.get(key) ?? { city: d.city, country: d.country, first_date: d.show_date, last_date: d.show_date, dates: [] };
+    const place = by === "venue" ? d.venue : d.city;
+    const key = `${place}|${d.country}`;
+    const c = byCity.get(key) ?? { city: place, country: d.country, first_date: d.show_date, last_date: d.show_date, dates: [] };
     c.dates.push(d);
     if (d.show_date < c.first_date) c.first_date = d.show_date;
     if (d.show_date > c.last_date) c.last_date = d.show_date;

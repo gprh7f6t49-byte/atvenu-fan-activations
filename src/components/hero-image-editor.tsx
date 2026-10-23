@@ -3,11 +3,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HERO_LAYOUTS, HERO_OVERLAYS, suggestOverlay, type HeroLayout, type HeroOverlay } from "@/lib/hero";
 import { LandingLayout, type LandingLook } from "./landing-layout";
-import { defaultHeadline } from "@/lib/discount";
+import { defaultHeadline, type AppliesTo } from "@/lib/discount";
+import type { CampaignType } from "@/lib/campaigns";
 
 type Text = Pick<LandingLook, "artist_name" | "tour_name" | "offer_headline" | "tagline" | "description" | "primary_color" | "accent_color" | "text_color"> & {
   redeem_place?: string | null;
-  tour_id?: string | null;
+  applies_to?: AppliesTo | null;
+  campaign_type?: CampaignType | null;
 };
 // Form fields the preview follows as they're edited.
 const LIVE_FIELDS = ["artist_name", "tour_name", "primary_color", "accent_color", "text_color", "offer_headline", "tagline", "description"] as const;
@@ -51,8 +53,13 @@ export function HeroImageEditor({ current, initial, text, shows }: {
         const v = value(f);
         if (v !== null) (next as Record<string, unknown>)[f] = v || text[f];
       }
-      const place = value("redeem_place");
-      if (place) next.redeem_place = place === "other" ? value("redeem_place_other") || null : place;
+      // What the discount covers (merch / food & drink) and any custom wording for where it's used.
+      const merch = form.elements.namedItem("cover_merch");
+      const fnb = form.elements.namedItem("cover_fnb");
+      if (merch instanceof HTMLInputElement && fnb instanceof HTMLInputElement) {
+        next.applies_to = merch.checked && fnb.checked ? "both" : fnb.checked ? "fnb" : "merch";
+        next.redeem_place = value("redeem_place") || null;
+      }
       // The setup page has no headline box: show the headline the fan discount will get.
       if (value("offer_headline") === null && value("fan_discount_value") !== null) {
         next.offer_headline = defaultHeadline({
@@ -60,8 +67,8 @@ export function HeroImageEditor({ current, initial, text, shows }: {
           discount_type: value("fan_discount_type") === "amount" ? "amount" : "percent",
           discount_value: Number(value("fan_discount_value")) || 0,
           discount_currency: value("fan_discount_currency") || null,
-          redeem_place: next.redeem_place,
-          tour_id: text.tour_id,
+          applies_to: next.applies_to,
+          campaign_type: text.campaign_type,
         });
       }
       setLive(next);

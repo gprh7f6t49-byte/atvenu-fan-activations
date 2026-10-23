@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { GroupActivation } from "@/lib/groups";
-import { formatDiscount, KIND_LABELS } from "@/lib/discount";
+import { APPLIES_LABELS, formatDiscount, KIND_LABELS } from "@/lib/discount";
 import { fmtInt, fmtRevenue } from "@/lib/format";
 import { KindBadge, StatusBadge } from "./status-badge";
 
@@ -22,7 +22,7 @@ export function ActivationSummary({ activations, setupHref }: { activations: Gro
             <StatusBadge status={a.status} />
           </div>
           <p className="mt-3 font-semibold">{a.offer_headline}</p>
-          <p className="text-xs text-zinc-500">{formatDiscount(a)} · {a.single_use ? "one order per code" : "reusable"}</p>
+          <p className="text-xs text-zinc-500">{formatDiscount(a)} · {APPLIES_LABELS[a.applies_to]} · {a.single_use ? "one order per code" : "reusable"}</p>
           <dl className="mt-4 grid grid-cols-3 gap-2 text-sm">
             <div><dt className="text-xs text-zinc-500">{a.kind === "fan" ? "Sign-ups" : "Passes"}</dt><dd className="font-semibold tabular-nums">{fmtInt(a.opt_ins)}</dd></div>
             <div><dt className="text-xs text-zinc-500">Used</dt><dd className="font-semibold tabular-nums">{fmtInt(a.redeemed_fans)}</dd></div>

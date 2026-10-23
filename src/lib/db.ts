@@ -197,6 +197,9 @@ CREATE TABLE IF NOT EXISTS opt_in_shows (
   PRIMARY KEY (opt_in_id, show_ref)
 );
 
+-- One-off data migrations that have run.
+CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, ran_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+
 -- Change log: who created, edited or deleted tours, events and activations.
 CREATE TABLE IF NOT EXISTS changes (
   id TEXT PRIMARY KEY,
@@ -259,6 +262,10 @@ const ADDED_COLUMNS: [table: string, column: string, ddl: string][] = [
   // Where the pass is used: merch stand, bar, pop-up shop… (shapes the wording fans see).
   // Standalone activations created together (fan + crew for one pop-up) share an event group.
   ["activations", "group_id", "TEXT"],
+  // Campaign type (tour / festival / event) and what the discount covers (merch / fnb / both).
+  ["tours", "type", "TEXT NOT NULL DEFAULT 'tour'"],
+  ["activations", "campaign_type", "TEXT NOT NULL DEFAULT 'tour'"],
+  ["activations", "applies_to", "TEXT NOT NULL DEFAULT 'merch'"],
   ["activations", "redeem_place", "TEXT NOT NULL DEFAULT 'merch stand'"],
   ["activations", "hero_overlay", "TEXT NOT NULL DEFAULT 'medium'"],
   ["tours", "organisation_id", "TEXT REFERENCES organisations(id) ON DELETE CASCADE"],
@@ -288,6 +295,45 @@ function migrate(conn: DatabaseSync) {
     }
     conn.prepare("UPDATE tours SET organisation_id = ? WHERE organisation_id IS NULL").run(org.id);
     conn.prepare("UPDATE activations SET organisation_id = ? WHERE organisation_id IS NULL").run(org.id);
+  }
+  once(conn, "campaigns-v1", () => {
+    // Every activation now belongs to a campaign. Standalone ones (and groups of them created
+    // together) become Event campaigns, keyed by their old group id so old links still resolve.
+    const loose = conn.prepare("SELECT * FROM activations WHERE tour_id IS NULL ORDER BY created_at").all() as {
+      id: string; group_id: string | null; artist_name: string; tour_name: string; organisation_id: string | null; created_at: string;
+    }[];
+    const made = new Set<string>();
+    for (const a of loose) {
+      const key = a.group_id ?? a.id;
+      if (!made.has(key)) {
+        conn.prepare("INSERT OR IGNORE INTO tours (id, artist_name, name, organisation_id, type, created_at) VALUES (?,?,?,?, 'event', ?)")
+          .run(key, a.artist_name, a.tour_name, a.organisation_id, a.created_at);
+        const shows = conn.prepare("SELECT * FROM shows WHERE activation_id = ?").all(a.id) as {
+          show_date: string; venue: string; city: string; country: string; latitude: number | null; longitude: number | null;
+        }[];
+        const insert = conn.prepare("INSERT INTO tour_dates (id, tour_id, show_date, venue, city, country, latitude, longitude) VALUES (?,?,?,?,?,?,?,?)");
+        for (const s of shows) insert.run(randomUUID(), key, s.show_date, s.venue, s.city, s.country ?? "", s.latitude, s.longitude);
+        made.add(key);
+      }
+      conn.prepare("UPDATE activations SET tour_id = ? WHERE id = ?").run(key, a.id);
+    }
+    conn.exec("UPDATE activations SET campaign_type = COALESCE((SELECT type FROM tours t WHERE t.id = activations.tour_id), 'tour')");
+    // Bars and food stalls were the food & drink offers.
+    conn.exec("UPDATE activations SET applies_to = 'fnb' WHERE lower(redeem_place) IN ('bar', 'food & drink stalls')");
+  });
+}
+
+/** Runs a data migration once per database. */
+function once(conn: DatabaseSync, name: string, fn: () => void) {
+  if (conn.prepare("SELECT 1 FROM migrations WHERE name = ?").get(name)) return;
+  conn.exec("BEGIN");
+  try {
+    fn();
+    conn.prepare("INSERT INTO migrations (name) VALUES (?)").run(name);
+    conn.exec("COMMIT");
+  } catch (err) {
+    conn.exec("ROLLBACK");
+    throw err;
   }
 }
 

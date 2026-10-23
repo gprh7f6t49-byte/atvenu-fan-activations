@@ -1,4 +1,3 @@
-import { eventActivations, type GroupActivation } from "./groups";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
@@ -92,14 +91,6 @@ export async function requireActivation(id: string): Promise<{ user: PublicUser;
   const activation = getActivation(id);
   if (!activation || !canAccessOrg(user, activation.organisation_id)) notFound();
   return { user, activation };
-}
-
-/** A standalone event (its activations), if this user may see it. */
-export async function requireEvent(key: string): Promise<{ user: PublicUser; activations: GroupActivation[] }> {
-  const user = await requireUser();
-  const activations = eventActivations(key);
-  if (!activations.length || !canAccessOrg(user, activations[0].organisation_id)) notFound();
-  return { user, activations };
 }
 
 /** Deleting tours and activations is for client admins (and atVenu admins). */

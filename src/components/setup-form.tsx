@@ -4,16 +4,17 @@ import { useState } from "react";
 import { ActionForm } from "@/components/action-form";
 import { ImageField } from "@/components/image-field";
 import { HeroImageEditor } from "@/components/hero-image-editor";
-import { PlaceField } from "@/components/place-field";
+import { CoverField } from "@/components/cover-field";
+import { CAMPAIGN_TYPES, type CampaignType } from "@/lib/campaigns";
 import { HERO_DEFAULTS } from "@/lib/hero";
 import type { ActivationKind } from "@/lib/activations";
 import { KIND_DEFAULTS, KIND_LABELS } from "@/lib/discount";
-import type { FormState } from "../../../actions";
+import type { FormState } from "@/app/admin/(app)/actions";
 
 const KINDS: ActivationKind[] = ["fan", "crew", "comp"];
 
-/** Pick the activation types for a tour and set each one's discount, all in one form. */
-export function SetupForm({ action, existing, slug, artist, tourName, shows, details, standalone = Boolean(details) }: {
+/** Pick the activation types for a campaign and set each one's discount, all in one form. */
+export function SetupForm({ action, existing, slug, artist, tourName, shows, campaignType }: {
   action: (prev: FormState, form: FormData) => Promise<FormState>;
   /** Types already set up on this tour, with a link to each. */
   existing: Partial<Record<ActivationKind, string>>;
@@ -21,31 +22,21 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows, det
   artist: string;
   tourName: string;
   shows: { id: string; show_date: string; venue: string; city: string }[];
-  /** Standalone activations: event details shown first (no tour). */
-  details?: React.ReactNode;
-  /** Not on a tour (a standalone event), even without the details section. */
-  standalone?: boolean;
+  campaignType: CampaignType;
 }) {
   const available = KINDS.filter((k) => !existing[k]);
   const [picked, setPicked] = useState<ActivationKind[]>(available);
   const toggle = (k: ActivationKind, on: boolean) => setPicked((p) => (on ? [...p, k] : p.filter((x) => x !== k)));
   const fan = picked.includes("fan");
-  const n = (i: number) => i + (details ? 1 : 0); // section numbers
+  const type = CAMPAIGN_TYPES[campaignType];
+  const n = (i: number) => i; // section numbers
 
   return (
     <ActionForm action={action} submitLabel={`Create ${picked.length || ""} activation${picked.length === 1 ? "" : "s"}`} pendingLabel="Creating…" className="space-y-8">
-      {details && (
-        <section className="space-y-4">
-          <h2 className="text-lg font-bold">1. Event details</h2>
-          {details}
-        </section>
-      )}
       <section>
-        <h2 className="mb-1 text-lg font-bold">{n(1)}. Which activations {standalone ? "do you need" : "does this tour need"}?</h2>
-        <p className="mb-4 text-sm text-zinc-600">
-          {standalone ? "They share these details and dates, so you only enter them once." : "They all use this tour's dates and cities, so you only enter them once."}
-        </p>
-        <div className="mb-4 max-w-xl"><PlaceField /></div>
+        <h2 className="mb-1 text-lg font-bold">{n(1)}. Which activations does this {type.label.toLowerCase()} need?</h2>
+        <p className="mb-4 text-sm text-zinc-600">They all share its {type.datesHeading.toLowerCase()}, so you only enter them once.</p>
+        <div className="mb-6 max-w-2xl"><CoverField appliesTo="merch" /></div>
         <div className="grid gap-4 lg:grid-cols-3">
           {KINDS.map((k) => {
             const d = KIND_DEFAULTS[k];
@@ -94,7 +85,7 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows, det
                       <span className="label">Code use</span>
                       <select name={`${k}_single_use`} defaultValue={d.singleUse ? "1" : "0"} className="input">
                         <option value="1">One order</option>
-                        <option value="0">Reusable all tour</option>
+                        <option value="0">Reusable</option>
                       </select>
                     </label>
                     <label className="col-span-2 block">
@@ -117,13 +108,13 @@ export function SetupForm({ action, existing, slug, artist, tourName, shows, det
             <span className="label">Landing page URL</span>
             <div className="flex items-center gap-1 text-sm text-zinc-500">
               <span>/a/</span>
-              <input name="slug" defaultValue={slug} required={!details} placeholder={details ? "Leave blank to create one from the name" : undefined} className="input" />
+              <input name="slug" defaultValue={slug} placeholder="Leave blank to create one from the name" className="input" />
             </div>
           </label>
           <HeroImageEditor
             initial={{ layout: HERO_DEFAULTS.hero_layout, x: 50, y: 50, overlay: HERO_DEFAULTS.hero_overlay }}
             text={{
-              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`, tour_id: standalone ? null : "tour",
+              artist_name: artist, tour_name: tourName, offer_headline: `${KIND_DEFAULTS.fan.discount}% off tour merch`, campaign_type: campaignType,
               tagline: null, description: null, primary_color: "#0B0B0C", accent_color: "#E8C547", text_color: "#FFFFFF",
             }}
             shows={shows}

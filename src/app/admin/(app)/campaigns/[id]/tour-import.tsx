@@ -24,8 +24,10 @@ interface Row {
 }
 
 /** Find dates on a tour web page (or in pasted text), review them in a table, then add the ticked ones. */
-export function TourImport({ tourId, defaultCountry, collapsed }: {
+export function TourImport({ tourId, defaultCountry, collapsed, noun = "tour dates" }: {
   tourId: string; defaultCountry: string;
+  /** What the dates are called: "tour dates", "festival days", "dates". */
+  noun?: string;
   /** Once the tour has dates the importer folds away, but stays in place so its messages survive. */
   collapsed: boolean;
 }) {
@@ -47,8 +49,8 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
     <section className="card">
       <details open={!collapsed || rows.length > 0} className="group">
       <summary className="cursor-pointer list-none text-lg font-bold">
-        Add tour dates
-        {collapsed && <span className="ml-2 text-sm font-normal text-zinc-500 group-open:hidden">— paste more dates or a tour page link ▸</span>}
+        Add {noun}
+        {collapsed && <span className="ml-2 text-sm font-normal text-zinc-500 group-open:hidden">— paste more, or a web page link ▸</span>}
       </summary>
       <p className="mb-4 mt-1 text-sm text-zinc-600">
         Copy the dates from anywhere (a website, Google, an email, a spreadsheet) and paste them here as they are. We&apos;ll
@@ -63,14 +65,14 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
         }}
       >
         <label className="block">
-          <span className="label">Paste tour dates — any format</span>
+          <span className="label">Paste {noun} — any format</span>
           <textarea name="text" rows={7} className="input text-sm"
             placeholder={"Fri, Apr 24, 2026: Norwich – UEA\nSat, Apr 25, 2026: Brighton – The Dome\n19-06-2027 | Croke Park | Dublin | Ireland\nSep 3, 2026: Santa Ana, CA – The Observatory"} />
         </label>
         <div className="grid gap-3 md:grid-cols-[1fr_200px]">
           <label className="block">
-            <span className="label">…or a link to the tour page</span>
-            <input name="url" type="text" inputMode="url" className="input" placeholder="https://artist.com/tour" />
+            <span className="label">…or a link to a web page listing them</span>
+            <input name="url" type="text" inputMode="url" className="input" placeholder="https://artist.com/tour or festival line-up page" />
             <span className="mt-1 block text-xs text-zinc-500">Used when the box above is empty. Some sites block this; pasting always works.</span>
           </label>
           <label className="block">
@@ -113,7 +115,7 @@ export function TourImport({ tourId, defaultCountry, collapsed }: {
                     <td className="pr-2"><input value={r.city} onChange={(e) => update(r.key, { city: e.currentTarget.value })} className="input py-1" /></td>
                     <td className="pr-2"><input value={r.country} maxLength={2} onChange={(e) => update(r.key, { country: e.currentTarget.value.toUpperCase() })} className="input py-1 uppercase" placeholder="GB" /></td>
                     <td className="whitespace-nowrap text-xs text-zinc-500">
-                      {r.duplicate ? "Already on tour" : isPast(r.show_date) ? "In the past" : r.latitude != null ? "📍" : ""}
+                      {r.duplicate ? "Already added" : isPast(r.show_date) ? "In the past" : r.latitude != null ? "📍" : ""}
                     </td>
                   </tr>
                 ))}

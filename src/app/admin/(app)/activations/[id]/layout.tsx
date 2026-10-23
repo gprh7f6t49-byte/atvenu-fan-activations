@@ -6,7 +6,7 @@ import { getTour } from "@/lib/tours";
 import { groupHref, siblingActivations } from "@/lib/groups";
 import { setStatusAction } from "../../actions";
 import { config } from "@/lib/config";
-import { formatDiscount, KIND_LABELS } from "@/lib/discount";
+import { APPLIES_LABELS, formatDiscount, KIND_LABELS } from "@/lib/discount";
 import { AtvenuCodeWarning } from "@/components/atvenu-code-warning";
 import { Tabs } from "./tabs";
 
@@ -22,7 +22,7 @@ export default async function ActivationLayout({ children, params }: LayoutProps
   return (
     <>
       <GroupHeader
-        type={tour ? "tour" : "event"}
+        type={a.campaign_type}
         href={href}
         artist={tour?.artist_name ?? a.artist_name}
         name={tour?.name ?? a.tour_name}
@@ -39,7 +39,7 @@ export default async function ActivationLayout({ children, params }: LayoutProps
           </div>
           <p className="text-sm text-zinc-500">
             {a.offer_headline}
-            {discount && !a.offer_headline.includes(discount) ? ` (${discount})` : ""} · {a.single_use ? "one order per code" : "reusable"}
+            {discount && !a.offer_headline.includes(discount) ? ` (${discount})` : ""} · {a.single_use ? "one order per code" : "reusable"} · {APPLIES_LABELS[a.applies_to]}
           </p>
           {a.kind === "fan" && (
             <a href={`/a/${a.slug}`} target="_blank" className="mt-1 inline-block font-mono text-xs text-zinc-600 underline">

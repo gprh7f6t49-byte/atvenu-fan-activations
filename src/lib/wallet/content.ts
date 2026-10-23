@@ -1,5 +1,6 @@
 import type { Activation, Show } from "../activations";
 import { formatDiscount, placeOf, wherePhrase } from "../discount";
+import { CAMPAIGN_TYPES } from "../campaigns";
 
 export function nextShow(shows: Show[], now = new Date()): Show | undefined {
   const today = now.toISOString().slice(0, 10);
@@ -37,6 +38,6 @@ export function redemptionInstructions(
     case "comp":
       return `Show this pass at ${wherePhrase(a)}. Staff will scan the QR code (or enter the code underneath) to apply your comp${discount ? ` (${discount})` : ""}. ${uses} This pass is personal to you.`;
     default:
-      return `Show this pass at ${a.tour_id ? `the official ${a.artist_name} ${placeOf(a)}` : wherePhrase(a)}. Staff will scan the QR code (or enter the code underneath) at checkout to apply your offer. ${a.single_use ? "One use per fan." : a.tour_id ? "Use it at every show you're going to." : "Use it each time you visit."}`;
+      return `Show this pass at ${a.campaign_type === "tour" ? `the official ${a.artist_name} ${placeOf(a)}` : wherePhrase(a)}. Staff will scan the QR code (or enter the code underneath) at checkout to apply your offer. ${a.single_use ? "One use per fan." : a.campaign_type === "event" ? "Use it each time you visit." : `Use it on every ${CAMPAIGN_TYPES[a.campaign_type].dateNoun} you've chosen.`}`;
   }
 }

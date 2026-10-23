@@ -7,14 +7,11 @@ import {
   deleteActivation,
   getActivationBySlug,
   getActivationStats,
-  listShows,
-  replaceShows,
   setActivationStatus,
   updateActivation,
   type Activation,
   type ActivationInput,
   type ActivationStatus,
-  type Show,
 } from "@/lib/activations";
 import { canDelete, isPlatformAdmin, requireActivation, requireUser } from "@/lib/auth";
 import { activationGroup, activationName, describeChanges, recordActivationChange, recordChange } from "@/lib/audit";
@@ -26,7 +23,7 @@ import { imageFromForm } from "@/lib/uploads";
 import { heroFromForm } from "@/lib/hero";
 import { generateCodes, MAX_GENERATE, setBatchLoaded } from "@/lib/codes";
 import { parseCodesCsv, parseRecipientsCsv, parseRedemptionsCsv } from "@/lib/csv";
-import { defaultHeadline, placeFromForm } from "@/lib/discount";
+import { coverFromForm, defaultHeadline, defaultTerms } from "@/lib/discount";
 import { sendPassEmail } from "@/lib/email";
 import {
   CodePoolExhaustedError,
@@ -54,9 +51,6 @@ const optional = z.string().trim().optional().transform((v) => v || null);
 const activationSchema = z.object({
   kind: z.enum(["fan", "crew", "comp"]),
   slug: z.string().trim().toLowerCase().regex(/^([a-z0-9]+(?:-[a-z0-9]+)*)?$/, "Slug: lowercase letters, numbers and dashes only"),
-  tour_id: z.string().trim().optional().transform((v) => v || null),
-  artist_name: z.string().trim().optional().transform((v) => v ?? ""),
-  tour_name: z.string().trim().optional().transform((v) => v ?? ""),
   tagline: optional,
   description: optional,
   offer_headline: z.string().trim(),
@@ -74,44 +68,20 @@ const activationSchema = z.object({
   pass_expires_at: optional,
 });
 
-/** One show per line: DD-MM-YYYY | venue | city | country | lat | lng (lat/lng optional). */
-function parseShows(text: string): Omit<Show, "id" | "activation_id">[] {
-  return text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line, i) => {
-      const [date, venue, city, country, lat, lng] = line.split("|").map((p) => p.trim());
-      const showDate = parseUkDate(date ?? "");
-      if (!showDate || !venue || !city) {
-        throw new Error(`Show line ${i + 1} should look like "12-06-2027 | Wembley Stadium | London | GB"`);
-      }
-      return {
-        show_date: showDate,
-        venue,
-        city,
-        country: country || "",
-        latitude: lat ? Number(lat) : null,
-        longitude: lng ? Number(lng) : null,
-      };
-    });
-}
-
-/** Reads the activation form; `existing` keeps current images when no new file is chosen. */
-async function readActivationForm(form: FormData, existing?: Activation) {
+/**
+ * Reads the activation settings form. The campaign supplies the name and dates; `existing` keeps
+ * current images when no new file is chosen.
+ */
+async function readActivationForm(form: FormData, existing: Activation) {
   const parsed = activationSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: parsed.error.issues[0].message } as const;
   const d = parsed.data;
   if (d.discount_type === "percent" && d.discount_value > 100) return { error: "A percentage discount can't be more than 100%" } as const;
   if (d.discount_type === "amount" && !d.discount_currency) return { error: "Choose the currency for a fixed-amount discount" } as const;
   if (d.kind === "fan" && !d.slug) return { error: "Choose a landing page URL slug" } as const;
-  if (d.tour_id) {
-    const tour = getTour(d.tour_id);
-    if (!tour) return { error: "That tour no longer exists" } as const;
-    d.artist_name = tour.artist_name;
-    d.tour_name = tour.name;
-  }
-  if (!d.artist_name || !d.tour_name) return { error: "Enter the artist and tour name, or pick a tour" } as const;
+  const campaign = existing.tour_id ? getTour(existing.tour_id) : undefined;
+  const cover = coverFromForm(form);
+  if ("error" in cover) return cover;
   let passExpires: string | null = null;
   if (d.pass_expires_at) {
     const day = parseUkDate(d.pass_expires_at);
@@ -119,26 +89,37 @@ async function readActivationForm(form: FormData, existing?: Activation) {
     passExpires = `${day}T23:59:59.000Z`; // valid to the end of that day
   }
   try {
-    const shows = parseShows(String(form.get("shows") ?? ""));
-    const redeem_place = placeFromForm(form);
-    const data = { ...d, redeem_place, offer_headline: d.offer_headline || defaultHeadline({ ...d, redeem_place }), pass_expires_at: passExpires } as ActivationInput;
+    const data = {
+      ...d,
+      ...cover,
+      tour_id: existing.tour_id,
+      artist_name: campaign?.artist_name ?? existing.artist_name,
+      tour_name: campaign?.name ?? existing.tour_name,
+      // Headline and terms that were still the automatic wording follow changes (e.g. adding food & drink).
+      offer_headline: !d.offer_headline || d.offer_headline === defaultHeadline(existing)
+        ? defaultHeadline({ ...d, ...cover, campaign_type: existing.campaign_type })
+        : d.offer_headline,
+      offer_terms: d.offer_terms === defaultTerms(existing.kind, existing.redeem_place, existing.campaign_type)
+        ? defaultTerms(existing.kind, cover.redeem_place, existing.campaign_type)
+        : d.offer_terms,
+      pass_expires_at: passExpires,
+    } as ActivationInput;
     if (data.discount_type === "percent") data.discount_currency = null;
     // Crew and comp activations have no landing page, so no landing image field.
-    data.hero_image_url = d.kind === "fan" ? await imageFromForm(form, "hero_image", existing?.hero_image_url ?? null) : (existing?.hero_image_url ?? null);
-    data.pass_image_url = await imageFromForm(form, "pass_image", existing?.pass_image_url ?? null);
+    data.hero_image_url = d.kind === "fan" ? await imageFromForm(form, "hero_image", existing.hero_image_url) : existing.hero_image_url;
+    data.pass_image_url = await imageFromForm(form, "pass_image", existing.pass_image_url);
     // Only fan activations have a landing page (and so the image editor).
     Object.assign(data, d.kind === "fan" ? heroFromForm(form) : {
-      hero_layout: existing?.hero_layout ?? "background", hero_focus_x: existing?.hero_focus_x ?? 50,
-      hero_focus_y: existing?.hero_focus_y ?? 50, hero_overlay: existing?.hero_overlay ?? "medium",
+      hero_layout: existing.hero_layout, hero_focus_x: existing.hero_focus_x, hero_focus_y: existing.hero_focus_y, hero_overlay: existing.hero_overlay,
     });
-    return { data, shows } as const;
+    return { data } as const;
   } catch (err) {
     return { error: (err as Error).message } as const;
   }
 }
 
 const ACTIVATION_FIELDS: Partial<Record<keyof Activation, string>> = {
-  artist_name: "Artist", tour_name: "Tour / event", tour_id: "Tour", slug: "Landing page URL", offer_headline: "Headline",
+  slug: "Landing page URL", offer_headline: "Headline", applies_to: "Covers",
   discount_type: "Discount type", discount_value: "Discount", discount_currency: "Currency", single_use: "Code use",
   redeem_place: "Where used", offer_terms: "Terms", tagline: "Tagline", description: "Description", promoter_name: "Promoter",
   privacy_url: "Privacy URL", primary_color: "Background colour", accent_color: "Accent colour", text_color: "Text colour",
@@ -153,16 +134,10 @@ export async function updateActivationAction(id: string, _prev: FormState, form:
   if (!form.get("slug")) form.set("slug", existing.slug);
   const read = await readActivationForm(form, existing);
   if ("error" in read) return { error: read.error };
-  if (read.data.tour_id && getTour(read.data.tour_id)?.organisation_id !== existing.organisation_id) {
-    return { error: "That tour belongs to a different client" };
-  }
   const clash = getActivationBySlug(read.data.slug);
   if (clash && clash.id !== id) return { error: "That slug is already in use" };
-  const beforeShows = listShows(id).map((s) => `${s.show_date} ${s.venue}`).join("|");
   updateActivation(id, read.data);
-  if (!read.data.tour_id) replaceShows(id, read.shows);
-  const datesChanged = !read.data.tour_id && beforeShows !== read.shows.map((s) => `${s.show_date} ${s.venue}`).join("|");
-  const details = [describeChanges(existing, read.data, ACTIVATION_FIELDS), datesChanged ? `Dates: ${read.shows.length} date(s)` : null].filter(Boolean).join("; ");
+  const details = describeChanges(existing, read.data, ACTIVATION_FIELDS);
   if (details) recordActivationChange(user, { ...existing, ...read.data }, "edited", details);
   revalidatePath(`/admin/activations/${id}`, "layout");
   return { ok: "Saved" };
@@ -372,7 +347,8 @@ export async function deleteActivationAction(id: string, _prev: FormState, form:
 
 /** Activations left alongside this one (same tour or event). */
 function siblingCount(a: Activation) {
-  return siblingActivations(a).filter((x) => x.id !== a.id).length || (a.tour_id ? 1 : 0);
+  // The campaign stays (even with no activations left), so go back to its overview.
+  return siblingActivations(a).filter((x) => x.id !== a.id).length || 1;
 }
 
 const activationChange = (a: Activation) => ({

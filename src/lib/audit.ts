@@ -2,12 +2,13 @@ import { db, newId } from "./db";
 import type { Activation } from "./activations";
 import { KIND_LABELS } from "./discount";
 import type { PublicUser } from "./users";
+import type { CampaignType } from "./campaigns";
 
 // Change log: who created, edited, deleted or launched tours, events and activations.
 // Names are copied in, so entries still read correctly after the thing itself is deleted.
 
 export type ChangeAction = "created" | "edited" | "renamed" | "deleted" | "went live" | "ended" | "set to draft";
-export type EntityType = "tour" | "event" | "activation" | "tour dates" | "codes" | "sales" | "sign-up link";
+export type EntityType = "tour" | "festival" | "event" | "campaign" | "activation" | "dates" | "tour dates" | "codes" | "sales" | "sign-up link";
 
 export interface ChangeInput {
   action: ChangeAction;
@@ -16,7 +17,7 @@ export interface ChangeInput {
   entityName: string;
   organisationId: string | null;
   /** The tour / event it belongs to, so its overview can show its history. */
-  group?: { type: "tour" | "event"; id: string } | null;
+  group?: { type: CampaignType; id: string } | null;
   details?: string | null;
 }
 
@@ -31,8 +32,7 @@ export function recordChange(user: Pick<PublicUser, "id" | "email" | "name">, c:
 }
 
 /** The tour or event an activation belongs to. */
-export const activationGroup = (a: Pick<Activation, "id" | "tour_id" | "group_id">) =>
-  a.tour_id ? { type: "tour" as const, id: a.tour_id } : { type: "event" as const, id: a.group_id ?? a.id };
+export const activationGroup = (a: Pick<Activation, "id" | "tour_id" | "campaign_type">) => ({ type: a.campaign_type, id: a.tour_id ?? a.id });
 
 /** "Oasis · Live '27 European Tour · Fan activation" */
 export const activationName = (a: Pick<Activation, "artist_name" | "tour_name" | "kind">) =>
@@ -79,7 +79,7 @@ export interface ChangeRow {
   entity_type: EntityType;
   entity_id: string | null;
   entity_name: string | null;
-  group_type: "tour" | "event" | null;
+  group_type: CampaignType | null;
   group_id: string | null;
   details: string | null;
 }

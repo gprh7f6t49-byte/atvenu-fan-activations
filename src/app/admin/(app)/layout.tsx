@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
             <img src="/brand/atvenu-wordmark-white.png" alt="atVenu" className="h-6 w-auto" />
           </Link>
           <NavLinks links={[
-            { href: "/admin", label: "Activations" },
+            { href: "/admin", label: "Campaigns" },
             ...(platform ? [{ href: "/admin/clients", label: "Clients" }] : []),
             ...(user.role === "org_admin" ? [{ href: "/admin/team", label: "Team" }] : []),
             { href: "/admin/changes", label: "Change log" },

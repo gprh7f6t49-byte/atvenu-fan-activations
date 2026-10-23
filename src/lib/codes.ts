@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { db, newId, nowIso, tx } from "./db";
 import type { Activation } from "./activations";
-import { formatDiscount } from "./discount";
+import { APPLIES_LABELS, formatDiscount } from "./discount";
 
 // Promo codes generated here, for clients who want to go live before atVenu loads them.
 // The alphabet leaves out 0/O and 1/I/L so codes survive being read out at a busy till.
@@ -73,6 +73,8 @@ export function codesForAtvenu(a: Activation, batchId: string | null) {
       "Discount Value": a.discount_value ?? "",
       Currency: a.discount_type === "amount" ? (a.discount_currency ?? "") : "",
       Discount: formatDiscount(a) ?? "",
+      // Which till systems should accept the code.
+      "Applies To": APPLIES_LABELS[a.applies_to ?? "merch"],
       "Max Uses": a.single_use ? 1 : "",
       "Valid Until": a.pass_expires_at ? a.pass_expires_at.slice(0, 10) : "",
       Description: description,
