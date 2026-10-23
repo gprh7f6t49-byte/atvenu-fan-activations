@@ -1,3 +1,4 @@
+import { PasswordInput } from "@/components/password-input";
 import { ActionForm } from "@/components/action-form";
 import { isPlatformAdmin, requireUser } from "@/lib/auth";
 import { config, emailProvider } from "@/lib/config";
@@ -41,9 +42,9 @@ export default async function AccountPage() {
       <section className="card">
         <h2 className="mb-3 font-semibold">Change password</h2>
         <ActionForm action={changePasswordAction} submitLabel="Change password">
-          <label className="block"><span className="label">Current password</span><input name="current" type="password" autoComplete="current-password" required className="input" /></label>
-          <label className="block"><span className="label">New password (10+ characters)</span><input name="password" type="password" autoComplete="new-password" required minLength={10} className="input" /></label>
-          <label className="block"><span className="label">Confirm new password</span><input name="confirm" type="password" autoComplete="new-password" required className="input" /></label>
+          <label className="block"><span className="label">Current password</span><PasswordInput name="current" autoComplete="current-password" required className="input" /></label>
+          <label className="block"><span className="label">New password (10+ characters)</span><PasswordInput name="password" autoComplete="new-password" required minLength={10} className="input" /></label>
+          <label className="block"><span className="label">Confirm new password</span><PasswordInput name="confirm" autoComplete="new-password" required className="input" /></label>
           <p className="text-xs text-zinc-500">You&apos;ll be signed out everywhere and asked to sign in again.</p>
         </ActionForm>
       </section>

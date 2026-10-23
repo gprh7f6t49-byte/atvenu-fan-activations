@@ -1,5 +1,6 @@
 "use client";
 
+import { PasswordInput } from "@/components/password-input";
 import Link from "next/link";
 import { startTransition, useActionState } from "react";
 import { login } from "./actions";
@@ -21,7 +22,7 @@ export function LoginForm() {
       </label>
       <label className="block">
         <span className="label">Password</span>
-        <input name="password" type="password" autoComplete="current-password" required className="input" />
+        <PasswordInput name="password" autoComplete="current-password" required className="input" />
       </label>
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}
       <button className="btn w-full" disabled={pending}>

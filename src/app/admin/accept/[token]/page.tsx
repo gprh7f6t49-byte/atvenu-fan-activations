@@ -1,3 +1,4 @@
+import { PasswordInput } from "@/components/password-input";
 import Link from "next/link";
 import { AuthCard } from "@/components/auth-card";
 import { SimpleForm } from "@/components/simple-form";
@@ -30,8 +31,8 @@ export default async function AcceptPage({ params }: PageProps<"/admin/accept/[t
         {invite && (
           <label className="block"><span className="label">Your name</span><input name="name" defaultValue={found.user.name ?? ""} className="input" /></label>
         )}
-        <label className="block"><span className="label">Password (10+ characters)</span><input name="password" type="password" autoComplete="new-password" required minLength={10} className="input" /></label>
-        <label className="block"><span className="label">Confirm password</span><input name="confirm" type="password" autoComplete="new-password" required className="input" /></label>
+        <label className="block"><span className="label">Password (10+ characters)</span><PasswordInput name="password" autoComplete="new-password" required minLength={10} className="input" /></label>
+        <label className="block"><span className="label">Confirm password</span><PasswordInput name="confirm" autoComplete="new-password" required className="input" /></label>
       </SimpleForm>
     </AuthCard>
   );
